@@ -35,14 +35,11 @@ end
 local Current_Level_Index, game_mode, End_Level_Timer, CurrentRoomID = getLevelStats()
 
 --read_screens is in smw-bizhawk
-local scrn_oscillX = 0
-local scrn_oscillY = 0
-local oscill_counter = 0
 local give_fitBonus = false
 local levelType, currLevelScreenCount, hScreenCurrent, hScreenCurrCount, vScreenCurrent, vScreenCurrCount = read_screens()
 
 function getPlayerStats()
-	return s16(WRAM.x), s16(WRAM.y), u24(WRAM.mario_score), u8(WRAM.game_over_time_out_flag), u8(WRAM.exit_level_byte)
+	return s16(WRAM.x), s16(WRAM.y), u24(WRAM.mario_score), u8(WRAM.game_over_time_out_flag), u8(WRAM.exit_level_byte), u8(WRAM.mario_lives)
 end
 
 --local current_level = level.new({1, 2, 3}) -- how to declare new level objects
@@ -84,13 +81,15 @@ function initializeConstants()
 		DISABLEMUTATIONCHANCE = .20
 		ENABLEMUTATIONCHANCE = .45
 		TIMEOUTCONST = 1500
-
+		RANDOMCULLCHANCE = .01 --TODO: this and extinction
 		MAXNODES = 500000
 end
 		
 function getPositions() --get mario location and score, along with screen values
 	if gameinfo.getromname() == "Super Mario World (USA)" then
-		marioX, marioY, marioScore, ai_failed_flag, level_exit_byte = getPlayerStats()
+	local last_level_exit_byte = level_exit_byte 
+		marioX, marioY, marioScore, ai_failed_flag, level_exit_byte, mario_lives = getPlayerStats()
+		if level_exit_byte ~= last_level_exit_byte and level_exit_byte == 128 then died = true end
 		local layer1x = s16(0x1A)
 		local layer1y = s16(0x1C)	
 		screenX = marioX-layer1x
@@ -102,9 +101,6 @@ function getPositions() --get mario location and score, along with screen values
 		--Only bother updating if it's not the same
 		if hScreenCurrent ~= tmpScrnX then
 			if lasthScreenCurrent ~= 0 then 		
-				--scrn_oscill should only change if the room changes 
-				scrn_oscillX = lasthScreenCurrent 
-				--console.writeline("Updating horizontal oscillation")
 				give_fitBonus = true
 			end		
 			lasthScreenCurrent = tmpScrnX
@@ -112,8 +108,6 @@ function getPositions() --get mario location and score, along with screen values
 		
 		if vScreenCurrent ~= tmpScrnY then 
 			if lastvScreenCurrent ~= 0 then 		
-				scrn_oscillY = lastvScreenCurrent
-				--console.writeline("Updating vertical oscillation")
 				give_fitBonus = true
 			end		
 			lastvScreenCurrent = tmpScrnY
@@ -910,7 +904,7 @@ function newGeneration()
 	
 	pool.generation = pool.generation + 1
 	
-	--writeFile("backup." .. pool.generation .. "." .. forms.gettext(saveLoadFile))
+	--writeNeuralNetworkFile("backup." .. pool.generation .. "." .. forms.gettext(saveLoadFile))
 end
 	
 function initializePool()
@@ -964,14 +958,28 @@ function nextGenome()
 	end
 end
 
-function fitnessAlreadyMeasured()
-	local species = pool.species[pool.currentSpecies]
-	local genome = species.genomes[pool.currentGenome]
+ function fitnessAlreadyMeasured()
+	 local species = pool.species[pool.currentSpecies]
+	 local genome = species.genomes[pool.currentGenome]
 	
-	return genome.fitness ~= 0
+	 return genome.fitness ~= 0
 end
+-- --instead of doing object name into
 
-function writeFile(filename)
+ --warning: overwrites files
+ function createNewCSV(filename, dataStrings)
+	local file = io.open(filename, 'w')
+	file:write(dataStrings)
+	file:close()
+ end
+
+function appendToCSV(filename, datastring)
+	local file = io.open(filename, 'a')
+	file:write(datastring)
+	file:close()
+ end
+
+function writeNeuralNetworkFile(filename)
         local file = io.open(filename, "w")
 	file:write(pool.generation .. "\n")
 	file:write(pool.maxFitness .. "\n")
@@ -1008,7 +1016,7 @@ end
 
 function savePool()
 	local filename = forms.gettext(saveLoadFile)
-	writeFile(filename)
+	writeNeuralNetworkFile(filename)
 end
 
 function loadFile(filename)
@@ -1106,8 +1114,9 @@ function onExit()
 end
 
 function initializeBaseVariables()
-
-	marioX, marioY, marioScore, ai_failed_flag, level_exit_byte = getPlayerStats() 
+	marioX, marioY, marioScore, ai_failed_flag, level_exit_byte, mario_lives = getPlayerStats() 
+	last_level_exit_byte = level_exit_byte
+	died = false
 	originLevelIndex = u8(0x13bf)
 	baseScore = marioScore
 	lastScore = baseScore
@@ -1127,30 +1136,7 @@ function initializeBaseVariables()
 	lastLevelIndex = 0
 	Current_Level_Index, game_mode, End_Level_Timer, CurrentRoomID = getLevelStats()
 	lastGameMode = game_mode
-	scrn_oscillX = -1
-	scrn_oscillY = -1
 	give_fitBonus = false
-end
-
---returns true if scrn_oscill == current screen, either x OR y
-function marioIsNotOscillating()
-	-- it goes: scrn_oscill -> lastScreen then ScreenCurrent in the order. This way we know if he's actually oscillating
-	-- see the getPosition() function for more info
-	if scrn_oscillX ~= hScreenCurrent and scrn_oscillY ~= vScreenCurrent and scrn_oscillX ~= 0 and scrn_oscillY ~= 0 then 
-		else if scrn_oscillX == hScreenCurrent or scrn_oscillY == vScreenCurrent then 
-			oscill_counter = oscill_counter + 1
-			if oscill_counter > 20 then
-				--if oscill_counter % 3 == 0 then --console.writeline("I think Mario is oscillating") end
-				return false 
-				else 
-				oscill_counter = 0
-				return true
-			end
-		end
-		oscill_counter = 0
-		return true 
-	end
-	return true
 end
 
 function screenCheck()
@@ -1180,12 +1166,10 @@ end
 -- MAIN
 	timeout = TIMEOUTCONST
 	initializeConstants()
-
+	createNewCSV("GenerationData.csv","TimeStamp,Generations,Species,Genome,Fitness,Current Level Index,Horizontal Screen,Vertical Screen,X Position,Y Position,Score Change,Died\n");
 	if pool == nil then	initializePool() end	
-	writeFile("temp.pool")
+	writeNeuralNetworkFile("temp.pool")
 	buildForm()
-	scrn_oscillX = -1
-	scrn_oscillY = -1
 	initializeBaseVariables()
 	
 while true do
@@ -1209,7 +1193,7 @@ while true do
 		--console.writeline("reducing fitness by -9")
 		end
 		else if hScreenCurrent ~= lasthScreenCurrent or CurrentRoomID ~= lastRoomID or lastvScreenCurrent ~= vScreenCurrent then
-			if marioIsNotOscillating() and give_fitBonus and level_exit_byte ~= 128 then
+			if give_fitBonus and level_exit_byte ~= 128 then
 				fitnessBonus = fitnessBonus + 25
 				timeout = TIMEOUTCONST
 				give_fitBonus = false
@@ -1220,10 +1204,8 @@ while true do
 				timeout = timeout - 1 
 				else if game_mode == SMW.game_mode_overworld and lastGameMode ~= SMW.game_mode_overworld then
 					fitnessBonus = fitnessBonus + 200
-					--console.writeline("Overworld fitnessBonus getting added")
 					timeout = TIMEOUTCONST
 					else if End_Level_Timer ~= 0 and level_exit_byte ~= 128 then
-						--console.writeline("End level Timer")
 						fitnessBonus = fitnessBonus + 1000
 						timeout = TIMEOUTCONST
 						else if game_mode == SMW.game_mode_overworld and lastGameMode == SMW.game_mode_overworld then
@@ -1234,7 +1216,7 @@ while true do
 			end
 		end
 	end
-	if marioIsNotOscillating() and level_exit_byte ~= 128 then
+	if level_exit_byte ~= 128 then
 		timeoutBonus = math.floor(pool.currentFrame / 6)
 	end 
 	
@@ -1253,45 +1235,36 @@ while true do
 	if level_exit_byte ~= 0x00 and level_exit_byte ~= 128 then
 		pool.currentFrame = 0 --reset 
 		timeout = -1
-		fitnessBonus = fitnessBonus * 2
+		if level_exit_byte == 0xE0 then	fitnessBonus = fitnessBonus * 1.2
+		else if level_exit_byte == 0x01 or level_exit_byte == 0x02 then fitnessBonus = fitnessBonus * 2 
+		else if level_exit_byte == 128 then fitnessBonus = 0 timeout = 0 timeoutBonus = 0 
+																							end
+												end
+									end
 		timeoutBonus = -1 
-		else if level_exit_byte == 128 then fitnessBonus = 0 timeout = 0 timeoutBonus = 0 end 
 	end
 	
 	if timeout + timeoutBonus <= 0 then
-		local fitness = rightmost + fitnessBonus + timeoutBonus + math.floor(bestScore / 10) -  math.floor(pool.currentFrame / 4)
-		if level_exit_byte == 128 then -- This applies some level of normalization to the fitness function
-			if fitness > 500 and fitness < 800 then -- hopefully it will help get more consistent fitness 
-				fitness = math.ceil(fitness / 1.1) 
-				else if fitness > 800 and fitness < 2000 then 
-					fitness = math.floor(fitness / 1.15) 
-					else if fitness > 2000 and fitness < 4000 then 
-						fitness = math.floor(fitness / 1.18)
-						else if fitness > 4000 and fitness < 6000 then fitness = math.floor(fitness / 2) 
-							else if fitness > 6000 and fitness < 12000 then fitness = math.floor(fitness / 4) 
-								else if fitness > 12000 then fitness = math.floor(fitness / 6) 
-								end
-							end
-						end
-					end
-				end
-			end 
-		end
+		local fitness = rightmost + fitnessBonus + timeoutBonus + math.floor(bestScore * .10) -  math.floor(pool.currentFrame * .25)
+		
 		if rightmost > 2000 then
 			fitness = fitness + 250
 		end 
 		genome.fitness = fitness
-		if pool.maxFitness > fitness * 4 then pool.maxFitness = pool.maxFitness - 10 end 
 		if fitness > pool.maxFitness then
 			-- applying some regularization, probably not the best way, but I think this is better....
-			if fitness > pool.maxFitness * 2 then fitness = math.floor(fitness / 1.5) end
+			if fitness > pool.maxFitness * 2 then fitness = math.floor(fitness * .66) end
 			pool.maxFitness = fitness
 			forms.settext(maxFitnessLabel, "Max Fitness: " .. math.floor(pool.maxFitness))
-			writeFile("backup." .. pool.generation .. "." .. forms.gettext(saveLoadFile))
-			else if fitness < 0 then fitness = -1 end
+			writeNeuralNetworkFile("backup." .. pool.generation .. "." .. forms.gettext(saveLoadFile))
+			if fitness < -1 then fitness = -1 end
 		end
 		
 		console.writeline("Gen " .. pool.generation .. " spec: " .. pool.currentSpecies .. " geno: " .. pool.currentGenome .. " fit: " .. fitness)
+		console.writeline("Mario End Level: " .. Current_Level_Index .. "Screen H: " .. hScreenCurrent .. " V: " .. vScreenCurrent .. " X: " .. marioX .. " Y: " .. marioY .. "\nScore: " .. marioScore)
+		appendToCSV("GenerationData.csv", "" .. os.time() .. "," .. pool.generation .. "," .. pool.currentSpecies .. "," .. pool.currentGenome .. "," .. fitness .. "," .. Current_Level_Index .. "," .. 
+		hScreenCurrent .. "," .. vScreenCurrCount .. "," .. marioX .. "," .. marioY .. "," .. marioScore - baseScore .. "," .. died .. "\n")
+		
 		pool.currentSpecies = 1
 		pool.currentGenome = 1
 		
