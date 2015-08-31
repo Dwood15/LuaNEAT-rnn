@@ -903,8 +903,8 @@ function newGeneration()
 	end
 	
 	pool.generation = pool.generation + 1
-	
-	--writeNeuralNetworkFile("backup." .. pool.generation .. "." .. forms.gettext(saveLoadFile))
+	os.execute("mkdir AIData\\Gen" .. pool.generation) 
+	writeNeuralNetworkFile("AIData\\Gen" .. pool.generation .. "backup." .. "." .. forms.gettext(saveLoadFile))
 end
 	
 function initializePool()
@@ -1019,7 +1019,7 @@ function savePool()
 	writeNeuralNetworkFile(filename)
 end
 
-function loadFile(filename)
+function loadNeuralNetFile(filename)
     local file = io.open(filename, "r")
 	pool = newPool()
 	pool.generation = file:read("*number")
@@ -1069,7 +1069,7 @@ end
  
 function loadPool()
 	local filename = forms.gettext(saveLoadFile)
-	loadFile(filename)
+	loadNeuralNetFile(filename)
 end
 
 function buildForm()
@@ -1139,12 +1139,6 @@ function initializeBaseVariables()
 	give_fitBonus = false
 end
 
-function screenCheck()
-	if hScreenCurrent ~= lasthScreenCurrent then return true end
-	if vScreenCurrent ~= lastvScreenCurrent then return true end
-	return false
-end
-
 function initializeRun()
 	savestate.load(Filename[fNameIndex]);
 	clearJoypad()
@@ -1160,15 +1154,20 @@ function initializeRun()
 	fitnessBonus = 0
 	initializeBaseVariables()
 	emu.limitframerate(false)
+	createNewCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv",
+	"Frame,Game Mode ID,Level Idx,H Scrn,V Scrn,X Pos,Y Pos,X Speed,Y Speed,Powerup ID, Lives\n")
 	collectgarbage()
 end
 
 -- MAIN
 	timeout = TIMEOUTCONST
 	initializeConstants()
-	createNewCSV("GenerationData.csv","TimeStamp,Generations,Species,Genome,Fitness,Current Level Index,Horizontal Screen,Vertical Screen,X Position,Y Position,Score Change,Died\n");
+	os.execute("mkdir AIData\\Gen0") 
+	createNewCSV("AIData\\FinalStats.csv",
+	"TimeStamp,Generations,Species,Genome,Fitness,Game Mode ID,Current Level Index,Horizontal Screen,"
+	.. "Vertical Screen,X Position,Y Position,Score Change,Died\n");
 	if pool == nil then	initializePool() end	
-	writeNeuralNetworkFile("temp.pool")
+	writeNeuralNetworkFile("AIData\\Gen0\\backup.pool")
 	buildForm()
 	initializeBaseVariables()
 	
@@ -1179,6 +1178,9 @@ while true do
 	
 	if pool.currentFrame % 4 == 0 then --can't merge this, other functions call evalCurrent()
 		evaluateCurrent()
+		appendToCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv",
+		"" .. pool.currentFrame .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrent .. "," .. 
+		marioX .. "," .. marioY .. "," .. s8(WRAM.x_speed) .. "," .. s8(WRAM.y_speed) .. "," .. u8(WRAM.powerup) .. "," .. mario_lives .. "\n")
 	end
 
 	joypad.set(controller)
@@ -1189,31 +1191,24 @@ while true do
 	lastRoomID = CurrentRoomID
 	getPositions()
 	if marioX == lastMarioX and lastScore == marioScore and lastMarioY == marioY and game_mode ~= SMW.game_mode_overworld then
-		if pool.currentFrame % 3 == 0 then timeout = timeout - 3 --the timeout evaluates so fast mario doesn't change positions
-		--console.writeline("reducing fitness by -9")
-		end
+		if pool.currentFrame % 3 == 0 then timeout = timeout - 3 end --the timeout evaluates so fast mario doesn't change positions
 		else if hScreenCurrent ~= lasthScreenCurrent or CurrentRoomID ~= lastRoomID or lastvScreenCurrent ~= vScreenCurrent then
 			if give_fitBonus and level_exit_byte ~= 128 then
 				fitnessBonus = fitnessBonus + 25
 				timeout = TIMEOUTCONST
 				give_fitBonus = false
-			else 
-				timeout = timeout - 2
-			end
-			else if pool.currentFrame % 4 == 0 then 
-				timeout = timeout - 1 
-				else if game_mode == SMW.game_mode_overworld and lastGameMode ~= SMW.game_mode_overworld then
-					fitnessBonus = fitnessBonus + 200
+				else timeout = timeout - 2 end
+		else if pool.currentFrame % 4 == 0 then timeout = timeout - 1 
+			else if game_mode == SMW.game_mode_overworld and lastGameMode ~= SMW.game_mode_overworld then
+				fitnessBonus = fitnessBonus + 200
+				timeout = TIMEOUTCONST
+				else if End_Level_Timer ~= 0 and level_exit_byte ~= 128 then
+					fitnessBonus = fitnessBonus + 1000
 					timeout = TIMEOUTCONST
-					else if End_Level_Timer ~= 0 and level_exit_byte ~= 128 then
-						fitnessBonus = fitnessBonus + 1000
-						timeout = TIMEOUTCONST
-						else if game_mode == SMW.game_mode_overworld and lastGameMode == SMW.game_mode_overworld then
-							timeout = timeout - 4
-						end
-					end
+					else if game_mode == SMW.game_mode_overworld and lastGameMode == SMW.game_mode_overworld then timeout = timeout - 4	end
 				end
 			end
+		end
 		end
 	end
 	if level_exit_byte ~= 128 then
@@ -1260,10 +1255,9 @@ while true do
 			if fitness < -1 then fitness = -1 end
 		end
 		
-		console.writeline("Gen " .. pool.generation .. " spec: " .. pool.currentSpecies .. " geno: " .. pool.currentGenome .. " fit: " .. fitness)
-		console.writeline("Mario End Level: " .. Current_Level_Index .. "Screen H: " .. hScreenCurrent .. " V: " .. vScreenCurrent .. " X: " .. marioX .. " Y: " .. marioY .. "\nScore: " .. marioScore)
-		appendToCSV("GenerationData.csv", "" .. os.time() .. "," .. pool.generation .. "," .. pool.currentSpecies .. "," .. pool.currentGenome .. "," .. fitness .. "," .. Current_Level_Index .. "," .. 
-		hScreenCurrent .. "," .. vScreenCurrCount .. "," .. marioX .. "," .. marioY .. "," .. marioScore - baseScore .. "," .. died .. "\n")
+		appendToCSV("AIData\\FinalStats.csv", "" .. os.time() .. "," .. pool.generation .. "," .. pool.currentSpecies .. "," .. pool.currentGenome .. "," .. 
+		fitness .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrCount .. "," .. 
+		marioX .. "," .. marioY .. "," .. marioScore - baseScore .. "," .. tostring(died) .. "\n")
 		
 		pool.currentSpecies = 1
 		pool.currentGenome = 1

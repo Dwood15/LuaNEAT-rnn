@@ -206,6 +206,7 @@ WRAM = {
     carrying_item = 0x148f,
     mario_score = 0x0f34,
     player_looking_up = 0x13de,
+	mario_lives = 0x0DBE,
     
     -- Yoshi
     yoshi_riding_flag = 0x187a,  -- #$00 = No, #$01 = Yes, #$02 = Yes, and turning around.
