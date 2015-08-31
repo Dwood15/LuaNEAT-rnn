@@ -1178,7 +1178,7 @@ while true do
 	
 	if pool.currentFrame % 4 == 0 then --can't merge this, other functions call evalCurrent()
 		evaluateCurrent()
-		appendToCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv",
+	appendToCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv",
 		"" .. pool.currentFrame .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrent .. "," .. 
 		marioX .. "," .. marioY .. "," .. s8(WRAM.x_speed) .. "," .. s8(WRAM.y_speed) .. "," .. u8(WRAM.powerup) .. "," .. mario_lives .. "\n")
 	end
@@ -1229,7 +1229,7 @@ while true do
 	
 	if level_exit_byte ~= 0x00 and level_exit_byte ~= 128 then
 		pool.currentFrame = 0 --reset 
-		timeout = -1
+		timeout = TIMEOUTCONST
 		if level_exit_byte == 0xE0 then	fitnessBonus = fitnessBonus * 1.2
 		else if level_exit_byte == 0x01 or level_exit_byte == 0x02 then fitnessBonus = fitnessBonus * 2 
 		else if level_exit_byte == 128 then fitnessBonus = 0 timeout = 0 timeoutBonus = 0 
@@ -1240,21 +1240,22 @@ while true do
 	end
 	
 	if timeout + timeoutBonus <= 0 then
-		local fitness = rightmost + fitnessBonus + timeoutBonus + math.floor(bestScore * .10) -  math.floor(pool.currentFrame * .25)
+		local fitness = rightmost + fitnessBonus + timeoutBonus + math.floor(bestScore * .10)
 		
 		if rightmost > 2000 then
 			fitness = fitness + 250
 		end 
-		genome.fitness = fitness
+		
 		if fitness > pool.maxFitness then
 			-- applying some regularization, probably not the best way, but I think this is better....
 			if fitness > pool.maxFitness * 2 then fitness = math.floor(fitness * .66) end
 			pool.maxFitness = fitness
 			forms.settext(maxFitnessLabel, "Max Fitness: " .. math.floor(pool.maxFitness))
+			genome.fitness = fitness
 			writeNeuralNetworkFile("backup." .. pool.generation .. "." .. forms.gettext(saveLoadFile))
-			if fitness < -1 then fitness = -1 end
 		end
 		
+		genome.fitness = fitness
 		appendToCSV("AIData\\FinalStats.csv", "" .. os.time() .. "," .. pool.generation .. "," .. pool.currentSpecies .. "," .. pool.currentGenome .. "," .. 
 		fitness .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrCount .. "," .. 
 		marioX .. "," .. marioY .. "," .. marioScore - baseScore .. "," .. tostring(died) .. "\n")
