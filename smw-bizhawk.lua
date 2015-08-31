@@ -95,7 +95,6 @@ SMW = {
 	-- Game Modes
 	game_mode_overworld = 0x0e,
 	game_mode_level = 0x14,
-	
 	sprite_max = 12, -- maximum number of sprites
 }
 

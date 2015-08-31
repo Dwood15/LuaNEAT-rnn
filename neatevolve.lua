@@ -1212,7 +1212,7 @@ while true do
 		end
 	end
 	if level_exit_byte ~= 128 then
-		timeoutBonus = math.floor(pool.currentFrame / 6)
+		timeoutBonus = math.floor(pool.currentFrame * .167)
 	end 
 	
 	if marioX > rightmost then rightmost = marioX end
@@ -1252,7 +1252,7 @@ while true do
 			pool.maxFitness = fitness
 			forms.settext(maxFitnessLabel, "Max Fitness: " .. math.floor(pool.maxFitness))
 			genome.fitness = fitness
-			writeNeuralNetworkFile("backup." .. pool.generation .. "." .. forms.gettext(saveLoadFile))
+			writeNeuralNetworkFile("AIData\\Gen" .. pool.generation .. "\\backup" .. pool.generation .. "." .. forms.gettext(saveLoadFile))
 		end
 		
 		genome.fitness = fitness
@@ -1271,7 +1271,7 @@ while true do
 	if forms.ischecked(hideBanner) then
 		gui.drawBox(0, 0, 300, 30, 0xD0FFFFFF, 0xD0FFFFFF)
 		gui.drawText(0, 0, string.format("Level Value: %x, Timeout: %i", level_exit_byte, timeout), 0xFF000000, 11) 
-		gui.drawText(0, 12, "Fitness: " ..  math.floor(rightmost + fitnessBonus + math.floor(bestScore / 10) - math.floor(pool.currentFrame / 6)), 0xFF000000, 11)
+		gui.drawText(0, 12, "Fitness: " ..  math.floor(rightmost + fitnessBonus + math.floor(bestScore * .10)), 0xFF000000, 11)
 		gui.drawText(100, 12, "Max Fitness: " .. pool.maxFitness, 0xFF000000, 11)
 	end
 	pool.currentFrame = math.floor(pool.currentFrame) + 1
