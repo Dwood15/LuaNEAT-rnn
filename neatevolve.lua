@@ -786,10 +786,8 @@ function cullSpecies(cutToOne)
 			return (a.fitness > b.fitness)
 		end)
 		
-		local remaining = math.ceil(#species.genomes/2)
-		if cutToOne then
-			remaining = 1
-		end
+		local remaining
+		if cutToOne then remaining = 1 else remaining = #species.genomes - math.random(0, #species.genomes) end --Some randomness to keep things spicy.
 		while #species.genomes > remaining do
 			table.remove(species.genomes)
 		end
@@ -812,7 +810,7 @@ function breedChild(species)
 	return child
 end
 
-function removeStaleSpecies()
+function removeStaleSpecies() --this is where the novelty f() is important
 	local survived = {}
 
 	for s = 1,#pool.species do
@@ -874,7 +872,7 @@ function newGeneration()
 	rankGlobally()
 	removeStaleSpecies()
 	rankGlobally()
-	for s = 1,#pool.species do
+	for s = 1, #pool.species do
 		local species = pool.species[s]
 		calculateAverageFitness(species)
 	end
@@ -886,7 +884,7 @@ function newGeneration()
 	for s = 1,#pool.species do
 		local species = pool.species[s]
 		breed = math.floor(species.averageFitness / sum * POPULATION) - 1
-		for i=1,breed do
+		for i=1, breed do
 			table.insert(children, breedChild(species))
 		end
 	end
