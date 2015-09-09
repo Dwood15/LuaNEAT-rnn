@@ -810,10 +810,6 @@ function breedChild(species)
 	return child
 end
 
-function getDeathSpot(gen, spec)
-	
-end
-
 function removeStaleSpecies() --this is where the novelty f() is important
 	local survived = {}
 
@@ -1242,15 +1238,10 @@ while true do
 	end
 	
 	if timeout + timeoutBonus <= 0 then
-		local fitness = rightmost + fitnessBonus + timeoutBonus + math.floor(bestScore * .10)
-		
-		if rightmost > 2000 then
-			fitness = fitness + 250
-		end 
+		local fitness = rightmost + fitnessBonus + timeoutBonus + math.floor((bestScore * .10) + (rightmost / pool.currentFrame))
 		
 		if fitness > pool.maxFitness then
 			-- applying some regularization, probably not the best way, but I think this is better....
-			if fitness > pool.maxFitness * 2 then fitness = math.floor(fitness * .66) end
 			pool.maxFitness = fitness
 			forms.settext(maxFitnessLabel, "Max Fitness: " .. math.floor(pool.maxFitness))
 			genome.fitness = fitness
