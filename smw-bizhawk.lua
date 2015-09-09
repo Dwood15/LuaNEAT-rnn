@@ -111,13 +111,14 @@ WRAM = {
     level_mode_settings = 0x1925,
     star_road_speed = 0x1df7,
     star_road_timer = 0x1df8,
-    exit_level_byte = 0x0DD5, -- 00 = do not auto-walk while on overworld, 
-							-- 0x01 = beaten level, regular, for the first time
-							-- 0x02 = level beaten, for the first time, secret
-							-- 0x80 = Exit level with either start or select, or by dying
-							-- 0xE0 = Beat level, but not for the first time. 
+    exit_level_byte = 0x0DD5,
+	exit_level_byte.no_auto_walk = 0x0,			-- 00 = do not auto-walk while on overworld, 				
+	exit_level_byte.normal_level_beat = 0x01,	-- 0x01 = beaten level, regular, for the first time				
+	exit_level_byte.level_beat_secret = 0x02,	-- 0x02 = level beaten, for the first time, secret
+	exit_level_byte.level_exit_dying_start_select = 0x80,	-- 0x80 = Exit level with either start or select, or by dying
+	exit_level_byte.level_beat_not_first_time = 0xE0,		-- 0xE0 = Beat level, but not for the first time.
 	
-    -- cheats
+	-- cheats
     frozen = 0x13fb,
     level_paused = 0x13d4,
     level_index = 0x13bf,
