@@ -1,3 +1,8 @@
+function getLineFromFinalStats(,)
+	io.input("FinalStats.csv")
+	local lines = io.lines()
+end
+
 function readCSV ()
 
 end

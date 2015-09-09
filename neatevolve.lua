@@ -65,7 +65,7 @@ function initializeConstants()
 								-- lua is one-indexed unless you tell it otherwise.
 		Outputs = #ButtonNames
 
-		POPULATION = 200
+		POPULATION = 300
 		DELTADISJOINT = 2.0
 		DELTAWEIGHTS = 0.4
 		DELTATHRESHOLD = 1.0
@@ -80,9 +80,9 @@ function initializeConstants()
 		STEPSIZE = 0.2
 		DISABLEMUTATIONCHANCE = .20
 		ENABLEMUTATIONCHANCE = .45
-		TIMEOUTCONST = 1500
+		TIMEOUTCONST = 1250
 		RANDOMCULLCHANCE = .01 --TODO: this and extinction
-		MAXNODES = 500000
+		MAXNODES = 250000
 end
 		
 function getPositions() --get mario location and score, along with screen values
@@ -810,6 +810,10 @@ function breedChild(species)
 	return child
 end
 
+function getDeathSpot(gen, spec)
+	
+end
+
 function removeStaleSpecies() --this is where the novelty f() is important
 	local survived = {}
 
@@ -1210,7 +1214,7 @@ while true do
 		end
 	end
 	if level_exit_byte ~= 128 then
-		timeoutBonus = math.floor(pool.currentFrame * .167)
+		timeoutBonus = math.floor(pool.currentFrame * .08)
 	end 
 	
 	if marioX > rightmost then rightmost = marioX end
@@ -1220,8 +1224,8 @@ while true do
 	local anim_trig = u8(WRAM.animation_trigger) -- player animation trigger ram address 0x71 
 
 	if ai_failed_flag ~= 0x0 then 
-		fitnessBonus = -1000
 		timeout = -1 
+		fitnessBonus = -1000
 		timeoutBonus = -1
 	end
 	
@@ -1268,7 +1272,7 @@ while true do
 		
 	if forms.ischecked(hideBanner) then
 		gui.drawBox(0, 0, 300, 30, 0xD0FFFFFF, 0xD0FFFFFF)
-		gui.drawText(0, 0, string.format("Level Value: %x, Timeout: %i", level_exit_byte, timeout), 0xFF000000, 11) 
+		gui.drawText(0, 0, string.format("Level Value: %x, Timeout: %i", level_exit_byte, timeout + timeoutBonus), 0xFF000000, 11) 
 		gui.drawText(0, 12, "Fitness: " ..  math.floor(rightmost + fitnessBonus + math.floor(bestScore * .10)), 0xFF000000, 11)
 		gui.drawText(100, 12, "Max Fitness: " .. pool.maxFitness, 0xFF000000, 11)
 	end
