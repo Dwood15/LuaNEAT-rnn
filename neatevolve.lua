@@ -65,12 +65,12 @@ function initializeConstants()
 								-- lua is one-indexed unless you tell it otherwise.
 		Outputs = #ButtonNames
 
-		POPULATION = 300
+		POPULATION = 200
 		DELTADISJOINT = 2.0
 		DELTAWEIGHTS = 0.4
 		DELTATHRESHOLD = 1.0
 		
-		STALESPECIES = 10
+		STALESPECIES = 8
 		MUTATECONNECTIONSCHANCE = 0.33
 		PERTURBCHANCE = 0.90
 		CROSSOVERCHANCE = 0.75
@@ -80,7 +80,7 @@ function initializeConstants()
 		STEPSIZE = 0.2
 		DISABLEMUTATIONCHANCE = .20
 		ENABLEMUTATIONCHANCE = .45
-		TIMEOUTCONST = 1250
+		TIMEOUTCONST = 900
 		RANDOMCULLCHANCE = .01 --TODO: this and extinction
 		MAXNODES = 250000
 end
@@ -787,7 +787,7 @@ function cullSpecies(cutToOne)
 		end)
 		
 		local remaining
-		if cutToOne then remaining = 1 else remaining = #species.genomes - math.random(0, #species.genomes) end --Some randomness to keep things spicy.
+		if cutToOne then remaining = 1 else remaining = #species.genomes - math.random(1, math.floor(#species.genomes * .65)) end --Some randomness to keep things spicy.
 		while #species.genomes > remaining do
 			table.remove(species.genomes)
 		end
@@ -808,30 +808,6 @@ function breedChild(species)
 	mutate(child)
 	
 	return child
-end
-
-function removeStaleSpecies() --this is where the novelty f() is important
-	local survived = {}
-
-	for s = 1,#pool.species do
-		local species = pool.species[s]
-		
-		table.sort(species.genomes, function (a,b)
-			return (a.fitness > b.fitness)
-		end)
-		
-		if species.genomes[1].fitness > species.topFitness then
-			species.topFitness = species.genomes[1].fitness
-			species.staleness = 0
-		else
-			species.staleness = species.staleness + 1
-		end
-		if species.staleness < STALESPECIES or species.topFitness >= pool.maxFitness then
-			table.insert(survived, species)
-		end
-	end
-
-	pool.species = survived
 end
 
 function removeWeakSpecies()
@@ -870,8 +846,7 @@ function newGeneration()
 	--console.writeline("New generation")
 	cullSpecies(false) -- Cull the bottom half of each species
 	rankGlobally()
-	removeStaleSpecies()
-	rankGlobally()
+	--removeStaleSpecies()
 	for s = 1, #pool.species do
 		local species = pool.species[s]
 		calculateAverageFitness(species)
@@ -891,7 +866,7 @@ function newGeneration()
 	
 	cullSpecies(true) -- Cull all but the top member of each species
 	while #children + #pool.species < POPULATION do
-		local species = pool.species[math.random(1, #pool.species)]
+		local species = pool.species[math.random(1, (#pool.species))]
 		table.insert(children, breedChild(species))
 	end
 	for c=1,#children do
