@@ -77,9 +77,9 @@ function initializeConstants()
 		LINKMUTATIONCHANCE = 1.80
 		NODEMUTATIONCHANCE = 0.65
 		BIASMUTATIONCHANCE = 0.45
-		STEPSIZE = 0.2
-		DISABLEMUTATIONCHANCE = .20
-		ENABLEMUTATIONCHANCE = .45
+		STEPSIZE = 0.23
+		DISABLEMUTATIONCHANCE = .35
+		ENABLEMUTATIONCHANCE = .55
 		TIMEOUTCONST = 900
 		RANDOMCULLCHANCE = .01 --TODO: this and extinction
 		MAXNODES = 250000
@@ -569,9 +569,9 @@ function pointMutate(genome)
 	for i=1,#genome.genes do
 		local gene = genome.genes[i]
 		if math.random() < PERTURBCHANCE then
-			gene.weight = gene.weight + math.random() * step*2 - step
+			gene.weight = gene.weight + (math.random() * STEPSIZE * 2) - STEPSIZE
 		else
-			gene.weight = math.random()*4-2
+			gene.weight = (math.random()*4)-2
 		end
 	end
 end
@@ -911,8 +911,8 @@ function newGeneration()
 	end
 	
 	pool.generation = pool.generation + 1
-	os.execute("mkdir AIData\\Gen" .. pool.generation) 
-	writeNeuralNetworkFile("AIData\\Gen" .. pool.generation .. "backup." .. "." .. forms.gettext(saveLoadFile))
+	os.execute("mkdir AIData\\Gen" .. pool.generation)
+	writeNeuralNetworkFile("AIData\\Gen" .. pool.generation .. "\\backup." .. forms.gettext(saveLoadFile))
 end
 	
 function initializePool()
