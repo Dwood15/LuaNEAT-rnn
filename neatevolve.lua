@@ -58,9 +58,9 @@ function initializeConstants()
 		}
 		fNameIndex = 1
 		BOXRADIUS = 6
-		INPUTSIZE = 4909 --(BOXRADIUS*2+1)*(BOXRADIUS*2+1) --13 * 13 = 169
+		INPUTSIZE = 4917 --(BOXRADIUS*2+1)*(BOXRADIUS*2+1) --13 * 13 = 169
 		
-		Inputs = 4910 --INPUTSIZE + 1 --increment the 2nd value if you wish to add more
+		Inputs = INPUTSIZE + 1 --INPUTSIZE + 1 --increment the 2nd value if you wish to add more
 								-- if you wish to add more. 
 								-- lua is one-indexed unless you tell it otherwise.
 		Outputs = #ButtonNames
@@ -284,15 +284,23 @@ function getInputs()
                 end
         end
 		local player_blocked_status = u8(WRAM.player_blocked_status)
-		local blocked_status = {1, 1, 1, 1, 1, 1, 1, 1}
-		if bit.check(player_blocked_status, 0) then blocked_status[1] = -1 end
-		if bit.check(player_blocked_status, 1) then blocked_status[2] = -1 end
-		if bit.check(player_blocked_status, 2) then blocked_status[3] = -1 end
-		if bit.check(player_blocked_status, 3) then blocked_status[4] = -1 end
-		if bit.check(player_blocked_status, 4) then blocked_status[5] = -1 end
-		if bit.check(player_blocked_status, 5) then blocked_status[6] = -1 end
-		if bit.check(player_blocked_status, 6) then blocked_status[7] = -1 end
-		if bit.check(player_blocked_status, 7) then blocked_status[8] = -1 end
+		local blocked_status = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
+		if bit.check(player_blocked_status, 0) then blocked_status[1] = 1 end
+		if bit.check(player_blocked_status, 1) then blocked_status[2] = 1 end
+		if bit.check(player_blocked_status, 2) then blocked_status[3] = 1 end
+		if bit.check(player_blocked_status, 3) then blocked_status[4] = 1 end
+		if bit.check(player_blocked_status, 4) then blocked_status[5] = 1 end
+		if bit.check(player_blocked_status, 5) then blocked_status[6] = 1 end
+		if bit.check(player_blocked_status, 6) then blocked_status[7] = 1 end
+		if bit.check(player_blocked_status, 7) then blocked_status[8] = 1 end
+		if bit.check(player_blocked_status, 0) then blocked_status[9] = 1 end
+		if bit.check(player_blocked_status, 1) then blocked_status[10] = 1 end
+		if bit.check(player_blocked_status, 2) then blocked_status[11] = 1 end
+		if bit.check(player_blocked_status, 3) then blocked_status[12] = 1 end
+		if bit.check(player_blocked_status, 4) then blocked_status[13] = 1 end
+		if bit.check(player_blocked_status, 5) then blocked_status[14] = 1 end
+		if bit.check(player_blocked_status, 6) then blocked_status[15] = 1 end
+		if bit.check(player_blocked_status, 7) then blocked_status[16] = 1 end
 		for i = 1, #blocked_status do
 			inputs[#inputs + 1] = blocked_status[i]
 		end
@@ -778,6 +786,30 @@ function totalAverageFitness()
 	return total
 end
 
+function removeStaleSpecies() --this is where the novelty f() is important
+    local survived = {}
+
+    for s = 1,#pool.species do
+        local species = pool.species[s]
+        
+        table.sort(species.genomes, function (a,b)
+            return (a.fitness > b.fitness)
+        end)
+        
+        if species.genomes[1].fitness > species.topFitness then
+            species.topFitness = species.genomes[1].fitness
+            species.staleness = 0
+        else
+            species.staleness = species.staleness + 1
+        end
+        if species.staleness < STALESPECIES or species.topFitness >= pool.maxFitness then
+            table.insert(survived, species)
+        end
+    end
+
+    pool.species = survived
+end
+
 function cullSpecies(cutToOne)
 	for s = 1,#pool.species do
 		local species = pool.species[s]
@@ -849,7 +881,7 @@ function newGeneration()
 	--console.writeline("New generation")
 	cullSpecies(false) -- Cull the bottom half of each species
 	rankGlobally()
-	--removeStaleSpecies()
+	removeStaleSpecies()
 	for s = 1, #pool.species do
 		local species = pool.species[s]
 		calculateAverageFitness(species)
