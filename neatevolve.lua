@@ -786,8 +786,11 @@ function cullSpecies(cutToOne)
 			return (a.fitness > b.fitness)
 		end)
 		
-		local remaining
-		if cutToOne then remaining = 1 else remaining = #species.genomes - math.random(1, math.floor(#species.genomes * .65)) end --Some randomness to keep things spicy.
+		local remaining = #species.genomes - math.random(1, math.ceil(#species.genomes * .65))
+		if remaining <= 0 then remaining = 2 
+			else if remaining >= #species.genomes then remaining = #species.genomes - 1 end
+		end
+		if cutToOne then remaining = 1	end --Some randomness to keep things spicy.
 		while #species.genomes > remaining do
 			table.remove(species.genomes)
 		end
