@@ -57,6 +57,14 @@ function initializeConstants()
 			"Right"
 		}
 		fNameIndex = 1
+		
+		GENERATIONSPERTEST = 100 
+		BEGINDECAYPERCENT = 50 -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
+		GENERATIONALDECAYRATE = .25 -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially
+		-- (generationspertest = generationspertest - (1 + (decayrate * populationsize))
+		--	if(pool.currentGeneration/generationspertest) >= begindecaypercent 		
+		--NOT IMPLEMENTED YET
+		
 		BOXRADIUS = 6
 		INPUTSIZE = 4917 --(BOXRADIUS*2+1)*(BOXRADIUS*2+1) --13 * 13 = 169
 		
@@ -261,7 +269,7 @@ function getInputs()
                                 if math.abs(distx) <= 8 or math.abs(disty) <= 8 then
 									inputs[#inputs] = -1 --the sprite is nearby
 									extInd = directionalGet(distx, disty)				
-									--fire a neuron based on the TYPE of sprite around, so we need the type...
+									--fire a neuron based on the TYPE of sprite around...
 								ind = idToBinaryArray(sprites[i]["ID"], ind)
 								end
                         end
@@ -285,28 +293,51 @@ function getInputs()
         end
 		local player_blocked_status = u8(WRAM.player_blocked_status)
 		local blocked_status = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
-		if bit.check(player_blocked_status, 0) then blocked_status[1] = 1 end
-		if bit.check(player_blocked_status, 1) then blocked_status[2] = 1 end
-		if bit.check(player_blocked_status, 2) then blocked_status[3] = 1 end
-		if bit.check(player_blocked_status, 3) then blocked_status[4] = 1 end
-		if bit.check(player_blocked_status, 4) then blocked_status[5] = 1 end
-		if bit.check(player_blocked_status, 5) then blocked_status[6] = 1 end
-		if bit.check(player_blocked_status, 6) then blocked_status[7] = 1 end
-		if bit.check(player_blocked_status, 7) then blocked_status[8] = 1 end
-		if bit.check(player_blocked_status, 0) then blocked_status[9] = 1 end
-		if bit.check(player_blocked_status, 1) then blocked_status[10] = 1 end
-		if bit.check(player_blocked_status, 2) then blocked_status[11] = 1 end
-		if bit.check(player_blocked_status, 3) then blocked_status[12] = 1 end
-		if bit.check(player_blocked_status, 4) then blocked_status[13] = 1 end
-		if bit.check(player_blocked_status, 5) then blocked_status[14] = 1 end
-		if bit.check(player_blocked_status, 6) then blocked_status[15] = 1 end
-		if bit.check(player_blocked_status, 7) then blocked_status[16] = 1 end
+		
+		if bit.check(player_blocked_status, 0) then 
+			blocked_status[1] = 1 
+			blocked_status[2] = 1
+		end
+		
+		if bit.check(player_blocked_status, 1) then 
+			blocked_status[3] = 1 
+			blocked_status[4] = 1
+		end
+		
+		if bit.check(player_blocked_status, 2) then 
+			blocked_status[5] = 1 
+			blocked_status[6] = 1
+		end
+
+		if bit.check(player_blocked_status, 3) then
+			blocked_status[7] = 1 
+			blocked_status[8] = 1
+		end
+		
+		if bit.check(player_blocked_status, 4) then 
+			blocked_status[9] = 1
+			blocked_status[10] = 1 
+		end
+
+		if bit.check(player_blocked_status, 5) then 
+			blocked_status[12] = 1 
+			blocked_status[11] = 1
+		end
+
+		if bit.check(player_blocked_status, 6) then 
+			blocked_status[13] = 1
+			blocked_status[14] = 1 
+		end
+		if bit.check(player_blocked_status, 7) then 
+			blocked_status[15] = 1 
+			blocked_status[16] = 1
+		end
+		
 		for i = 1, #blocked_status do
 			inputs[#inputs + 1] = blocked_status[i]
 		end
-        --mariovx = memory.read_s8(0x7B)
-        --mariovy = memory.read_s8(0x7D)
-        return inputs --getExtraInputs(inputs)
+
+        return inputs
 end
 
 function sigmoid(x)
@@ -975,16 +1006,26 @@ end
 -- --instead of doing object name into
 
  --warning: overwrites files
- function createNewCSV(filename, dataStrings)
+ function createNewCSV(filename, datastring)
 	local file = io.open(filename, 'w')
-	file:write(dataStrings)
+	if file ~= nil then 
+	file:write(datastring)
 	file:close()
+	file = nil
+	else 
+	console.writeline("Unable to open file: " .. filename)
+	end
  end
 
 function appendToCSV(filename, datastring)
 	local file = io.open(filename, 'a')
-	file:write(datastring)
-	file:close()
+	if file ~= nil then
+		file:write(datastring)
+		file:close()
+		file = nil
+	else
+	console.writeline("Unable to open file: " .. filename)
+	end
  end
 
 function writeNeuralNetworkFile(filename)
@@ -1020,6 +1061,7 @@ function writeNeuralNetworkFile(filename)
 		end
         end
         file:close()
+		file = nil
 end
 
 function savePool()
@@ -1029,6 +1071,7 @@ end
 
 function loadNeuralNetFile(filename)
     local file = io.open(filename, "r")
+	if file ~= nil then 
 	pool = newPool()
 	pool.generation = file:read("*number")
 	pool.maxFitness = file:read("*number")
@@ -1073,8 +1116,10 @@ function loadNeuralNetFile(filename)
 	end
 	initializeRun()
 	pool.currentFrame = pool.currentFrame + 1
+	else 
+	console.writeline("Could not open: " .. filename .. " please restart.")
+	end
 end
- 
 function loadPool()
 	local filename = forms.gettext(saveLoadFile)
 	loadNeuralNetFile(filename)
