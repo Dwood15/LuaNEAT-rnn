@@ -58,6 +58,7 @@ function initializeConstants()
 		}
 		fNameIndex = 1
 		
+		CURRENTRUN = 3
 		GENERATIONSPERTEST = 100 
 		BEGINDECAYPERCENT = 50 -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
 		GENERATIONALDECAYRATE = .25 -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially
@@ -990,7 +991,7 @@ function nextGenome()
 		pool.currentGenome = 1
 		pool.currentSpecies = pool.currentSpecies+1
 		if pool.currentSpecies > #pool.species then
-			--console.writeline("NextGenome")
+			writeNeuralNetworkFile("AIData\\Gen" .. pool.generation .. "\\backup" .. pool.generation .. "." .. forms.gettext(saveLoadFile))
 			newGeneration()
 			pool.currentSpecies = 1
 		end
@@ -1212,9 +1213,12 @@ function initializeRun()
 	collectgarbage()
 end
 
--- MAIN
+function initializeEverything()
 	timeout = TIMEOUTCONST
 	initializeConstants()
+	CURRENTRUN = CURRENTRUN + 1
+	os.execute("mkdir PastRuns\\Run" .. CURRENTRUN)
+	os.execute("move AIData\\* PastRuns\\Run" .. CURRENTRUN)
 	os.execute("mkdir AIData\\Gen0") 
 	createNewCSV("AIData\\FinalStats.csv",
 	"TimeStamp,Generations,Species,Genome,Fitness,Game Mode ID,Current Level Index,Horizontal Screen,"
@@ -1223,105 +1227,109 @@ end
 	writeNeuralNetworkFile("AIData\\Gen0\\backup.pool")
 	buildForm()
 	initializeBaseVariables()
-	
+end
+
 while true do
+	if pool == nil then initializeEverything() end
+	if pool.generation < GENERATIONSPERTEST then 
+		local species = pool.species[pool.currentSpecies]
+		local genome = species.genomes[pool.currentGenome]
+		
+		if pool.currentFrame % 4 == 0 then --can't merge this, other functions call evalCurrent()
+			evaluateCurrent()
+		appendToCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv",
+			"" .. pool.currentFrame .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrent .. "," .. 
+			marioX .. "," .. marioY .. "," .. s8(WRAM.x_speed) .. "," .. s8(WRAM.y_speed) .. "," .. u8(WRAM.powerup) .. "," .. mario_lives .. "\n")
+		end
 
-	local species = pool.species[pool.currentSpecies]
-	local genome = species.genomes[pool.currentGenome]
-	
-	if pool.currentFrame % 4 == 0 then --can't merge this, other functions call evalCurrent()
-		evaluateCurrent()
-	appendToCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv",
-		"" .. pool.currentFrame .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrent .. "," .. 
-		marioX .. "," .. marioY .. "," .. s8(WRAM.x_speed) .. "," .. s8(WRAM.y_speed) .. "," .. u8(WRAM.powerup) .. "," .. mario_lives .. "\n")
-	end
+		joypad.set(controller)
+		lastMarioX = marioX
+		lastMarioY = marioY
+		lastScore = marioScore
 
-	joypad.set(controller)
-	lastMarioX = marioX
-	lastMarioY = marioY
-	lastScore = marioScore
-
-	lastRoomID = CurrentRoomID
-	getPositions()
-	if marioX == lastMarioX and lastScore == marioScore and lastMarioY == marioY and game_mode ~= SMW.game_mode_overworld then
-		if pool.currentFrame % 3 == 0 then timeout = timeout - 3 end --the timeout evaluates so fast mario doesn't change positions
-		else if hScreenCurrent ~= lasthScreenCurrent or CurrentRoomID ~= lastRoomID or lastvScreenCurrent ~= vScreenCurrent then
-			if give_fitBonus and level_exit_byte ~= 128 then
-				fitnessBonus = fitnessBonus + 25
-				timeout = TIMEOUTCONST
-				give_fitBonus = false
-				else timeout = timeout - 2 end
-		else if pool.currentFrame % 4 == 0 then timeout = timeout - 1 
-			else if game_mode == SMW.game_mode_overworld and lastGameMode ~= SMW.game_mode_overworld then
-				fitnessBonus = fitnessBonus + 200
-				timeout = TIMEOUTCONST
-				else if End_Level_Timer ~= 0 and level_exit_byte ~= 128 then
-					fitnessBonus = fitnessBonus + 1000
+		lastRoomID = CurrentRoomID
+		getPositions()
+		if marioX == lastMarioX and lastScore == marioScore and lastMarioY == marioY and game_mode ~= SMW.game_mode_overworld then
+			if pool.currentFrame % 3 == 0 then timeout = timeout - 3 end --the timeout evaluates so fast mario doesn't change positions
+			else if hScreenCurrent ~= lasthScreenCurrent or CurrentRoomID ~= lastRoomID or lastvScreenCurrent ~= vScreenCurrent then
+				if give_fitBonus and level_exit_byte ~= 128 then
+					fitnessBonus = fitnessBonus + 25
 					timeout = TIMEOUTCONST
-					else if game_mode == SMW.game_mode_overworld and lastGameMode == SMW.game_mode_overworld then timeout = timeout - 4	end
+					give_fitBonus = false
+					else timeout = timeout - 2 end
+			else if pool.currentFrame % 4 == 0 then timeout = timeout - 1 
+				else if game_mode == SMW.game_mode_overworld and lastGameMode ~= SMW.game_mode_overworld then
+					fitnessBonus = fitnessBonus + 200
+					timeout = TIMEOUTCONST
+					else if End_Level_Timer ~= 0 and level_exit_byte ~= 128 then
+						fitnessBonus = fitnessBonus + 1000
+						timeout = TIMEOUTCONST
+						else if game_mode == SMW.game_mode_overworld and lastGameMode == SMW.game_mode_overworld then timeout = timeout - 4	end
+					end
 				end
 			end
+			end
 		end
-		end
-	end
-	if level_exit_byte ~= 128 then
-		timeoutBonus = math.floor(pool.currentFrame * .08)
-	end 
-	
-	if marioX > rightmost then rightmost = marioX end
-	if marioY < topmost then topmost = marioY end
-	if marioScore > lastScore and marioScore > bestScore then bestScore = marioScore end
-	
-	local anim_trig = u8(WRAM.animation_trigger) -- player animation trigger ram address 0x71 
-
-	if ai_failed_flag ~= 0x0 then 
-		timeout = -1 
-		fitnessBonus = -1000
-		timeoutBonus = -1
-	end
-	
-	if level_exit_byte ~= 0x00 and level_exit_byte ~= 128 then
-		pool.currentFrame = 0 --reset 
-		timeout = TIMEOUTCONST
-		if level_exit_byte == 0xE0 then	fitnessBonus = fitnessBonus * 1.2
-		else if level_exit_byte == 0x01 or level_exit_byte == 0x02 then fitnessBonus = fitnessBonus * 2 
-		else if level_exit_byte == 128 then fitnessBonus = 0 timeout = 0 timeoutBonus = 0 
-																							end
-												end
-									end
-		timeoutBonus = -1 
-	end
-	
-	if timeout + timeoutBonus <= 0 then
-		local fitness = rightmost + fitnessBonus + timeoutBonus + math.floor((bestScore * .10) + (rightmost / pool.currentFrame))
+		if level_exit_byte ~= 128 then
+			timeoutBonus = math.floor(pool.currentFrame * .08)
+		end 
 		
-		if fitness > pool.maxFitness then
-			-- applying some regularization, probably not the best way, but I think this is better....
-			pool.maxFitness = fitness
-			forms.settext(maxFitnessLabel, "Max Fitness: " .. math.floor(pool.maxFitness))
+		if marioX > rightmost then rightmost = marioX end
+		if marioY < topmost then topmost = marioY end
+		if marioScore > lastScore and marioScore > bestScore then bestScore = marioScore end
+		
+		local anim_trig = u8(WRAM.animation_trigger) -- player animation trigger ram address 0x71 
+
+		if ai_failed_flag ~= 0x0 then 
+			timeout = -1 
+			fitnessBonus = -1000
+			timeoutBonus = -1
+		end
+		
+		if level_exit_byte ~= 0x00 and level_exit_byte ~= 128 then
+			pool.currentFrame = 0 --reset 
+			timeout = TIMEOUTCONST
+			if level_exit_byte == 0xE0 then	fitnessBonus = fitnessBonus * 1.2
+			else if level_exit_byte == 0x01 or level_exit_byte == 0x02 then fitnessBonus = fitnessBonus * 2 
+			else if level_exit_byte == 128 then fitnessBonus = 0 timeout = 0 timeoutBonus = 0 
+																								end
+													end
+										end
+			timeoutBonus = -1 
+		end
+		
+		if timeout + timeoutBonus <= 0 then
+			local fitness = rightmost + fitnessBonus + timeoutBonus + math.floor((bestScore * .10) + (rightmost / pool.currentFrame))
+			
+			if fitness > pool.maxFitness then pool.maxFitness = fitness
+				forms.settext(maxFitnessLabel, "Max Fitness: " .. math.floor(pool.maxFitness))
+			end
+			
 			genome.fitness = fitness
-			writeNeuralNetworkFile("AIData\\Gen" .. pool.generation .. "\\backup" .. pool.generation .. "." .. forms.gettext(saveLoadFile))
-		end
-		
-		genome.fitness = fitness
-		appendToCSV("AIData\\FinalStats.csv", "" .. os.time() .. "," .. pool.generation .. "," .. pool.currentSpecies .. "," .. pool.currentGenome .. "," .. 
-		fitness .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrCount .. "," .. 
-		marioX .. "," .. marioY .. "," .. marioScore - baseScore .. "," .. tostring(died) .. "\n")
-		
-		pool.currentSpecies = 1
-		pool.currentGenome = 1
-		
-		while fitnessAlreadyMeasured() do nextGenome() end
-		initializeRun()
+			appendToCSV("AIData\\FinalStats.csv", "" .. os.time() .. "," .. pool.generation .. "," .. pool.currentSpecies .. "," .. pool.currentGenome .. "," .. 
+			fitness .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrCount .. "," .. 
+			marioX .. "," .. marioY .. "," .. marioScore - baseScore .. "," .. tostring(died) .. "\n")
+			
+			
+			pool.currentSpecies = 1
+			pool.currentGenome = 1
+			
+			
+			while fitnessAlreadyMeasured() do nextGenome() end
+			initializeRun()
 
+		end
+			
+		if forms.ischecked(hideBanner) then
+			gui.drawBox(0, 0, 300, 30, 0xD0FFFFFF, 0xD0FFFFFF)
+			gui.drawText(0, 0, string.format("Level Value: %x, Timeout: %i", level_exit_byte, timeout + timeoutBonus), 0xFF000000, 11) 
+			gui.drawText(0, 12, "Fitness: " ..  math.floor(rightmost + fitnessBonus + math.floor(bestScore * .10)), 0xFF000000, 11)
+			gui.drawText(100, 12, "Max Fitness: " .. pool.maxFitness, 0xFF000000, 11)
+		end
+		pool.currentFrame = math.floor(pool.currentFrame) + 1
+		emu.frameadvance();
+	else
+		pool = nil
+		collectgarbage()
 	end
-		
-	if forms.ischecked(hideBanner) then
-		gui.drawBox(0, 0, 300, 30, 0xD0FFFFFF, 0xD0FFFFFF)
-		gui.drawText(0, 0, string.format("Level Value: %x, Timeout: %i", level_exit_byte, timeout + timeoutBonus), 0xFF000000, 11) 
-		gui.drawText(0, 12, "Fitness: " ..  math.floor(rightmost + fitnessBonus + math.floor(bestScore * .10)), 0xFF000000, 11)
-		gui.drawText(100, 12, "Max Fitness: " .. pool.maxFitness, 0xFF000000, 11)
-	end
-	pool.currentFrame = math.floor(pool.currentFrame) + 1
-	emu.frameadvance();
 end
