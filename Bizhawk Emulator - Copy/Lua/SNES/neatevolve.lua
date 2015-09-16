@@ -11,7 +11,7 @@
 require("smw-bizhawk")
 --shamelessly stolen from smw-bizhawk on github
 local mainmemory = mainmemory
-
+asfad
 -- Compatibility
 local u8  = mainmemory.read_u8
 local s8  = mainmemory.read_s8
