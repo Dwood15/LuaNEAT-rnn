@@ -26,7 +26,27 @@ Bizhawk Emulator - Copy/evolveScriptBackup/neatevolve_jun_29_2015.lua
 Bizhawk Emulator - Copy/evolveScriptBackup/neatevolve_jun_30_2015.lua
 *.db
 Bizhawk Emulator - Copy/gamedb/
-*.lua
 *.bak
 Bizhawk Emulator - Copy/Roms/Super Mario World (USA).sfc
 *.smc
+Bizhawk Emulator - Copy/Lua/ButtonCount.lua
+Bizhawk Emulator - Copy/Lua/N64/M64_reader.lua
+Bizhawk Emulator - Copy/Lua/NES/Castlevania.lua
+Bizhawk Emulator - Copy/Lua/NES/Contra force.lua
+Bizhawk Emulator - Copy/Lua/NES/Holy Diver.lua
+Bizhawk Emulator - Copy/Lua/NES/Megaman 4.lua
+Bizhawk Emulator - Copy/Lua/NES/NinjaGaiden_Hitbox.lua
+Bizhawk Emulator - Copy/Lua/NES/PunchOutStats.lua
+Bizhawk Emulator - Copy/Lua/NES/SMB2U.lua
+Bizhawk Emulator - Copy/Lua/SNES/Megaman X.lua
+Bizhawk Emulator - Copy/Lua/SNES/Megaman X2.lua
+Bizhawk Emulator - Copy/Lua/SNES/Megaman X3.lua
+Bizhawk Emulator - Copy/Lua/test.lua
+Bizhawk Emulator - Copy/evolveScriptBackup/simpleEvolve.lua
+Bizhawk Emulator - Copy/Lua/SNES/Super Castlevania 4.lua
+Bizhawk Emulator - Copy/Lua/SNES/Super Ghouls N Ghost.lua
+Bizhawk Emulator - Copy/Lua/SNES/Super Mario World.lua
+Bizhawk Emulator - Copy/Lua/SNES/Super Metroid.lua
+Bizhawk Emulator - Copy/Lua/SNES/Y's III.lua
+Bizhawk Emulator - Copy/Lua/SNES/snes9x.lua
+Bizhawk Emulator - Copy/Lua/SNES/Rockman and Forte.lua
