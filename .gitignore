@@ -1,0 +1,32 @@
+*.State
+*.exe
+Bizhawk Emulator - Copy/Gameboy/
+*.csv
+*.pool
+Bizhawk Emulator - Copy/Lua/SNES/PastRuns/Run01/AIData/csvAnalyzer.exe.config
+Bizhawk Emulator - Copy/Lua/SNES/PastRuns/Run01/AIData/csvAnalyzer.vshost.exe.config
+Bizhawk Emulator - Copy/Lua/SNES/PastRuns/Run01/AIData/csvAnalyzer.vshost.exe.manifest
+Bizhawk Emulator - Copy/Lua/SNES/PastRuns/Run4/csvAnalyzer.exe.config
+Bizhawk Emulator - Copy/Lua/UnitTests/
+Bizhawk Emulator - Copy/NES/
+Bizhawk Emulator - Copy/Roms/Super Mario World (U) [!].smc
+Bizhawk Emulator - Copy/shaders/
+*.SaveRAM
+*.ini
+*.json
+*.zip
+Bizhawk Emulator - Copy/dll/ffmpeg_readme.txt
+Bizhawk Emulator - Copy/evolveScriptBackup/neatevolve._jun_22_2015.lua
+Bizhawk Emulator - Copy/evolveScriptBackup/neatevolve_bugged_jun_29_2015.lua
+Bizhawk Emulator - Copy/evolveScriptBackup/neatevolve_july_2nd_2015.lua
+Bizhawk Emulator - Copy/evolveScriptBackup/neatevolve_jun_19_2015.lua
+Bizhawk Emulator - Copy/evolveScriptBackup/neatevolve_jun_19cp_2015.lua
+Bizhawk Emulator - Copy/evolveScriptBackup/neatevolve_jun_27_2015.lua
+Bizhawk Emulator - Copy/evolveScriptBackup/neatevolve_jun_29_2015.lua
+Bizhawk Emulator - Copy/evolveScriptBackup/neatevolve_jun_30_2015.lua
+*.db
+Bizhawk Emulator - Copy/gamedb/
+*.lua
+*.bak
+Bizhawk Emulator - Copy/Roms/Super Mario World (USA).sfc
+*.smc
