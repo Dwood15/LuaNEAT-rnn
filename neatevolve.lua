@@ -834,11 +834,6 @@ function totalAverageFitness()
 	return total
 end
 
-function averageSpecieVariety()
-	for s = 1, #pool.species do
-	pool.
-	end
-end
 
 function removeStaleSpecies() --this is where the novelty f() is important
     local survived = {}
