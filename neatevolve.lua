@@ -58,6 +58,14 @@ function initializeConstants()
 		}
 		fNameIndex = 1
 		
+		STALEXWEIGHT = .50
+		STALEYWEIGHT = .40
+		STALEDEATHWEIGHT = .03
+		STALESCOREWEIGHT = .07
+		
+		STALEGENOMERATIO = .15 -- STALEGENOMES < (#species.genomes * STALEGENOMERATIO)
+		
+		MAXEVALS = 2
 		CURRENTRUN = 3
 		GENERATIONSPERTEST = 100 
 		BEGINDECAYPERCENT = 50 -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
@@ -79,16 +87,17 @@ function initializeConstants()
 		DELTAWEIGHTS = 0.4
 		DELTATHRESHOLD = 1.0
 		
-		STALESPECIES = 8
-		MUTATECONNECTIONSCHANCE = 0.33
+		
+		STALESPECIES = 10
+		MUTATECONNECTIONSCHANCE = 0.35
 		PERTURBCHANCE = 0.90
 		CROSSOVERCHANCE = 0.75
 		LINKMUTATIONCHANCE = 1.80
 		NODEMUTATIONCHANCE = 0.65
 		BIASMUTATIONCHANCE = 0.45
 		STEPSIZE = 0.23
-		DISABLEMUTATIONCHANCE = .35
-		ENABLEMUTATIONCHANCE = .55
+		DISABLEMUTATIONCHANCE = .40
+		ENABLEMUTATIONCHANCE = .60
 		TIMEOUTCONST = 900
 		RANDOMCULLCHANCE = .01 --TODO: this and extinction
 		MAXNODES = 250000
@@ -368,6 +377,7 @@ function newSpecies()
 	species.staleness = 0
 	species.genomes = {}
 	species.averageFitness = 0
+	species.distancefromMean = 0
 	return species
 end
 
@@ -387,7 +397,10 @@ function newGenome()
 	genome.mutationRates.enable = ENABLEMUTATIONCHANCE
 	genome.mutationRates.disable = DISABLEMUTATIONCHANCE
 	genome.mutationRates.step = STEPSIZE
-	
+	genome.FinalStats.X = nil
+	genome.FinalStats.Y = nil
+	genome.FinalStats.Score = nil
+	genome.FinalStats.Died = nil
 	return genome
 end
 
@@ -403,7 +416,10 @@ function copyGenome(genome)
 	genome2.mutationRates.node = genome.mutationRates.node
 	genome2.mutationRates.enable = genome.mutationRates.enable
 	genome2.mutationRates.disable = genome.mutationRates.disable
-	
+	genome2.FinalStats.X = nil
+	genome2.FinalStats.Y = nil
+	genome2.FinalStats.Score = 
+	genome2.FinalStats.Died = nil			
 	return genome2
 end
 
@@ -489,19 +505,19 @@ function evaluateNetwork(network, inputs)
 	for i=1,Inputs do
 		network.neurons[i].value = inputs[i]
 	end
-       
-	for _,neuron in pairs(network.neurons) do
-		if #neuron.incoming > 0 then
-			local sum = 0
-			for j = 1,#neuron.incoming do
-				local incoming = neuron.incoming[j]
-				local other = network.neurons[incoming.into]
-				sum = sum + incoming.weight * other.value
+    for i = 1, MAXEVALS do
+		for _,neuron in pairs(network.neurons) do
+			if #neuron.incoming > 0 then
+				local sum = 0
+				for j = 1,#neuron.incoming do
+					local incoming = neuron.incoming[j]
+					local other = network.neurons[incoming.into]
+					sum = sum + incoming.weight * other.value
+				end
+				neuron.value = sigmoid(sum)
 			end
-			neuron.value = sigmoid(sum)
 		end
-	end
-       
+    end
 	local outputs = {}
 	for o=1,Outputs do
 		local button = "P1 " .. ButtonNames[o]
@@ -818,22 +834,40 @@ function totalAverageFitness()
 	return total
 end
 
+function averageSpecieVariety()
+	for s = 1, #pool.species do
+	pool.
+	end
+end
+
 function removeStaleSpecies() --this is where the novelty f() is important
     local survived = {}
 
-    for s = 1,#pool.species do
+    for s = 1, #pool.species do
+		while #pool.species[s].genomes < MINNOGENOMES and s < #pool.species do s = s + 1 end -- we don't want any species with low numbers of genomes in the pool
+		
         local species = pool.species[s]
         
-        table.sort(species.genomes, function (a,b)
-            return (a.fitness > b.fitness)
-        end)
-        
-        if species.genomes[1].fitness > species.topFitness then
-            species.topFitness = species.genomes[1].fitness
-            species.staleness = 0
-        else
-            species.staleness = species.staleness + 1
-        end
+		local genome.staleness = 0
+		
+		for g = 1, #species.genomes do
+			for gtop = #species.genomes, g do 
+					if gtop ~= g then
+					if species.genomes[g].FinalStats.X == species[gtop].FinalStats.X then genome.staleness = genome.staleness + STALEXWEIGHT end --highest weight
+					if species.genomes[g].FinalStats.Y == species[gtop].FinalStats.Y then genome.staleness = genome.staleness + STALEYWEIGHT end --2nd
+					if species.genomes[g].FinalStats.Score == species[gtop].FinalStats.Score then genome.staleness = genome.staleness + STALESCOREWEIGHT end --3rd
+					if species.genomes[g].FinalStats.Died == species[gtop].FinalStats.Died then genome.staleness = genome.staleness + STALEDEATHWEIGHT end -- 4th
+				end
+			end
+		end
+		
+		if genome.staleness < (#species.genomes + (#species.genomes * STALEGENOMERATIO )) then table.insert(survived, species) 
+			else if species.genomes[1].fitness > species.topFitness then
+				species.topFitness = species.genomes[1].fitness
+				species.staleness = 0
+			else
+				species.staleness = species.staleness + 1
+			end
         if species.staleness < STALESPECIES or species.topFitness >= pool.maxFitness then
             table.insert(survived, species)
         end
@@ -843,21 +877,13 @@ function removeStaleSpecies() --this is where the novelty f() is important
 end
 
 function cullSpecies(cutToOne)
-	for s = 1,#pool.species do
+	for s = 1, #pool.species do
 		local species = pool.species[s]
 		
-		table.sort(species.genomes, function (a,b)
-			return (a.fitness > b.fitness)
-		end)
-		
-		local remaining = #species.genomes - math.random(1, math.ceil(#species.genomes * .65))
-		if remaining <= 0 then remaining = 2 
-			else if remaining >= #species.genomes then remaining = #species.genomes - 1 end
-		end
+		local remaining = math.random(1, math.ceil(#species.genomes * .50))
+		if remaining <= 0 then remaining = 2 else if remaining >= #species.genomes then remaining = #species.genomes - 1 end end
 		if cutToOne then remaining = 1	end --Some randomness to keep things spicy.
-		while #species.genomes > remaining do
-			table.remove(species.genomes)
-		end
+		while #species.genomes > remaining do table.remove(species.genomes) end
 	end
 end
 
@@ -911,9 +937,11 @@ end
 
 function newGeneration()
 	--console.writeline("New generation")
-	cullSpecies(false) -- Cull the bottom half of each species
+	for s, #pool.species do table.sort(pool.species[s].genomes, function (a,b) return (a.fitness > b.fitness) end) end
+	
 	rankGlobally()
 	removeStaleSpecies()
+	cullSpecies(false) -- Cull the bottom half of each species
 	for s = 1, #pool.species do
 		local species = pool.species[s]
 		calculateAverageFitness(species)
@@ -937,7 +965,6 @@ function newGeneration()
 		table.insert(children, breedChild(species))
 	end
 	for c=1,#children do
-	
 		local child = children[c]
 		addToSpecies(child)
 	end
@@ -1237,9 +1264,9 @@ while true do
 		
 		if pool.currentFrame % 4 == 0 then --can't merge this, other functions call evalCurrent()
 			evaluateCurrent()
-		appendToCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv",
-			"" .. pool.currentFrame .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrent .. "," .. 
-			marioX .. "," .. marioY .. "," .. s8(WRAM.x_speed) .. "," .. s8(WRAM.y_speed) .. "," .. u8(WRAM.powerup) .. "," .. mario_lives .. "\n")
+		--appendToCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv",
+		--	"" .. pool.currentFrame .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrent .. "," .. 
+		--	marioX .. "," .. marioY .. "," .. s8(WRAM.x_speed) .. "," .. s8(WRAM.y_speed) .. "," .. u8(WRAM.powerup) .. "," .. mario_lives .. "\n")
 		end
 
 		joypad.set(controller)
@@ -1270,6 +1297,7 @@ while true do
 			end
 			end
 		end
+
 		if level_exit_byte ~= 128 then
 			timeoutBonus = math.floor(pool.currentFrame * .08)
 		end 
