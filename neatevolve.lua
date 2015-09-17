@@ -2,9 +2,9 @@
 -- Intended for use with the BizHawk emulator and Super Mario World
 -- 	Additions by Dwood15 on the TAS forums, as well as some help from henke37, 
 -- who gave the inspiration for how to add the extra inputs
--- the 'Restart' counter was given thanks to F9Alejandro 
+-- 
 
--- TODO: remove network visualization, find way to represent it visually in a better way.
+-- TODO: remove network visualization, find way to represent it better.
 -- TODO: refactorization, optimization, make the script more consistent across the board, as well as more readable
 ]]--
 --local includeFile = require "smw-bizhawk"
@@ -401,6 +401,7 @@ function newGenome()
 	genome.FinalStats.Y = nil
 	genome.FinalStats.Score = nil
 	genome.FinalStats.Died = nil
+	genome.FinalStats.game_mode = nil
 	return genome
 end
 
@@ -420,6 +421,7 @@ function copyGenome(genome)
 	genome2.FinalStats.Y = nil
 	genome2.FinalStats.Score = 
 	genome2.FinalStats.Died = nil			
+	genome2.FinalStats.game_mode = nil
 	return genome2
 end
 
