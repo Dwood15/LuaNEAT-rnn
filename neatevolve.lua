@@ -1,7 +1,6 @@
---[[ MarI/O by SethBling
+--[[ MarI/O by SethBling, Heavily extended by Dwood15
 -- Intended for use with the BizHawk emulator and Super Mario World
--- 	Additions by Dwood15 on the TAS forums, as well as some help from henke37, 
--- who gave the inspiration for how to add the extra inputs
+-- Special shoutout to henke37, who gave the inspiration for how to add extra inputs
 -- 
 
 -- TODO: remove network visualization, find way to represent it better.
@@ -63,7 +62,7 @@ function initializeConstants()
 		STALEDEATHWEIGHT = .03
 		STALESCOREWEIGHT = .07
 		
-		STALEGENOMERATIO = .15 -- STALEGENOMES < (#species.genomes * STALEGENOMERATIO)
+		STALEGENOMERATIO = 1.5 -- staleness < (#species.genomes * STALEGENOMERATIO)
 		
 		MAXEVALS = 2
 		CURRENTRUN = 3
@@ -82,10 +81,12 @@ function initializeConstants()
 								-- lua is one-indexed unless you tell it otherwise.
 		Outputs = #ButtonNames
 
-		POPULATION = 200
-		DELTADISJOINT = 2.0
+		MINPOPULATION = 300
+		MINNOGENOMES = 2
+		
+		DELTADISJOINT = 1.70
 		DELTAWEIGHTS = 0.4
-		DELTATHRESHOLD = 1.0
+		DELTATHRESHOLD = 1.50
 		
 		
 		STALESPECIES = 10
@@ -100,7 +101,7 @@ function initializeConstants()
 		ENABLEMUTATIONCHANCE = .60
 		TIMEOUTCONST = 900
 		RANDOMCULLCHANCE = .01 --TODO: this and extinction
-		MAXNODES = 250000
+		MAXNODES = 125000
 end
 		
 function getPositions() --get mario location and score, along with screen values
@@ -183,8 +184,8 @@ function idToBinaryArray(spriteID, inputArray)
 	return inputArray
 end
 
---Yes, this code is repetitive. If there is a faster, more efficient way of doing this, please message dwood15
--- using reddit or tasvideos.com forums.
+--Yes, this code is repetitive. If there is a faster, more efficient way of doing this, please message dwood15 using reddit or tasvideos.com forums.
+
 local function directionalGet(dx, dy)
 	local	extInd = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
 	if distx < 0 then
@@ -397,6 +398,7 @@ function newGenome()
 	genome.mutationRates.enable = ENABLEMUTATIONCHANCE
 	genome.mutationRates.disable = DISABLEMUTATIONCHANCE
 	genome.mutationRates.step = STEPSIZE
+	genome.FinalStats = {}
 	genome.FinalStats.X = nil
 	genome.FinalStats.Y = nil
 	genome.FinalStats.Score = nil
@@ -417,9 +419,10 @@ function copyGenome(genome)
 	genome2.mutationRates.node = genome.mutationRates.node
 	genome2.mutationRates.enable = genome.mutationRates.enable
 	genome2.mutationRates.disable = genome.mutationRates.disable
+	genome2.FinalStats = {}
 	genome2.FinalStats.X = nil
 	genome2.FinalStats.Y = nil
-	genome2.FinalStats.Score = 
+	genome2.FinalStats.Score = nil
 	genome2.FinalStats.Died = nil			
 	genome2.FinalStats.game_mode = nil
 	return genome2
@@ -530,7 +533,7 @@ function evaluateNetwork(network, inputs)
 		end
 	end
        
-        return outputs
+    return outputs, network
 end
 
 function crossover(g1, g2)
@@ -836,35 +839,32 @@ function totalAverageFitness()
 	return total
 end
 
-
 function removeStaleSpecies() --this is where the novelty f() is important
     local survived = {}
 
     for s = 1, #pool.species do
-		while #pool.species[s].genomes < MINNOGENOMES and s < #pool.species do s = s + 1 end -- we don't want any species with low numbers of genomes in the pool
-		
         local species = pool.species[s]
         
-		local genome.staleness = 0
-		
+		local staleness = 0
 		for g = 1, #species.genomes do
 			for gtop = #species.genomes, g do 
-					if gtop ~= g then
-					if species.genomes[g].FinalStats.X == species[gtop].FinalStats.X then genome.staleness = genome.staleness + STALEXWEIGHT end --highest weight
-					if species.genomes[g].FinalStats.Y == species[gtop].FinalStats.Y then genome.staleness = genome.staleness + STALEYWEIGHT end --2nd
-					if species.genomes[g].FinalStats.Score == species[gtop].FinalStats.Score then genome.staleness = genome.staleness + STALESCOREWEIGHT end --3rd
-					if species.genomes[g].FinalStats.Died == species[gtop].FinalStats.Died then genome.staleness = genome.staleness + STALEDEATHWEIGHT end -- 4th
+				if gtop ~= g then
+				if species.genomes[g].FinalStats.X == species[gtop].FinalStats.X then staleness = staleness + STALEXWEIGHT end --highest weight
+				if species.genomes[g].FinalStats.Y == species[gtop].FinalStats.Y then staleness = staleness + STALEYWEIGHT end --2nd
+				if species.genomes[g].FinalStats.Score == species[gtop].FinalStats.Score then staleness = staleness + STALESCOREWEIGHT end --3rd
+				if species.genomes[g].FinalStats.Died == species[gtop].FinalStats.Died then staleness = staleness + STALEDEATHWEIGHT end -- 4th
 				end
 			end
 		end
 		
-		if genome.staleness < (#species.genomes + (#species.genomes * STALEGENOMERATIO )) then table.insert(survived, species) 
+		if staleness < (#species.genomes * STALEGENOMERATIO ) then 
+		console.writeline("reset stale species for species: " .. " of gen: " .. pool.generation .. " stalenes: " .. staleness)
+		species.staleness = 0 
 			else if species.genomes[1].fitness > species.topFitness then
 				species.topFitness = species.genomes[1].fitness
 				species.staleness = 0
-			else
-				species.staleness = species.staleness + 1
-			end
+			else species.staleness = species.staleness + 1 end
+		end
         if species.staleness < STALESPECIES or species.topFitness >= pool.maxFitness then
             table.insert(survived, species)
         end
@@ -906,8 +906,7 @@ function removeWeakSpecies()
 	local sum = totalAverageFitness()
 	for s = 1,#pool.species do
 		local species = pool.species[s]
-		-- breed = math.floor(species.averageFitness / sum * POPULATION)
-		if math.floor(species.averageFitness / sum * POPULATION) >= 1 then
+		if math.floor(species.averageFitness / sum * MINPOPULATION) >= 1 then
 			table.insert(survived, species)
 		end
 	end
@@ -917,7 +916,7 @@ end
 
 function addToSpecies(child)
 	local foundSpecies = false
-	for s=1,#pool.species do
+	for s=1, #pool.species do
 		local species = pool.species[s]
 		if not foundSpecies and sameSpecies(child, species.genomes[1]) then
 			table.insert(species.genomes, child)
@@ -934,8 +933,8 @@ end
 
 function newGeneration()
 	--console.writeline("New generation")
-	for s, #pool.species do table.sort(pool.species[s].genomes, function (a,b) return (a.fitness > b.fitness) end) end
-	
+	for s = 1, #pool.species do table.sort(pool.species[s].genomes, function(a, b) return (a.fitness > b.fitness) end) end 
+
 	rankGlobally()
 	removeStaleSpecies()
 	cullSpecies(false) -- Cull the bottom half of each species
@@ -950,14 +949,14 @@ function newGeneration()
 	local children = {} 
 	for s = 1,#pool.species do
 		local species = pool.species[s]
-		breed = math.floor(species.averageFitness / sum * POPULATION) - 1
+		breed = math.floor(species.averageFitness / sum * MINPOPULATION) - 1
 		for i=1, breed do
 			table.insert(children, breedChild(species))
 		end
 	end
 	
 	cullSpecies(true) -- Cull all but the top member of each species
-	while #children + #pool.species < POPULATION do
+	while #children + #pool.species < MINPOPULATION do
 		local species = pool.species[math.random(1, (#pool.species))]
 		table.insert(children, breedChild(species))
 	end
@@ -974,7 +973,7 @@ end
 function initializePool()
 	pool = newPool()
 
-	for i=1, POPULATION do
+	for i=1, MINPOPULATION do
 		basic = basicGenome()
 		addToSpecies(basic)
 	end
@@ -990,12 +989,12 @@ function clearJoypad()
 	joypad.set(controller)
 end
 
-function evaluateCurrent()
+function evaluateCurrent(updateInputs)
 	local species = pool.species[pool.currentSpecies]
 	local genome = species.genomes[pool.currentGenome]
 
-	inputs = getInputs()
-	controller = evaluateNetwork(genome.network, inputs)
+	if updateInputs then inputs = getInputs() end
+	controller, pool.species[pool.currentSpecies].genomes[pool.currentGenome] = evaluateNetwork(genome.network, inputs)
 	
 	if controller["P1 Left"] and controller["P1 Right"] then
 		controller["P1 Left"] = false
@@ -1145,6 +1144,7 @@ function loadNeuralNetFile(filename)
 	console.writeline("Could not open: " .. filename .. " please restart.")
 	end
 end
+
 function loadPool()
 	local filename = forms.gettext(saveLoadFile)
 	loadNeuralNetFile(filename)
@@ -1225,7 +1225,7 @@ function initializeRun()
 	local species = pool.species[pool.currentSpecies]
 	local genome = species.genomes[pool.currentGenome]
 	generateNetwork(genome)
-	evaluateCurrent()
+	evaluateCurrent(true)
 	timeout = TIMEOUTCONST
 	fNameIndex = fNameIndex + 1
 	if fNameIndex > #Filename then fNameIndex = 1  end
@@ -1240,6 +1240,7 @@ end
 function initializeEverything()
 	timeout = TIMEOUTCONST
 	initializeConstants()
+	console.writeline("Constants Initialized - Making directories")
 	CURRENTRUN = CURRENTRUN + 1
 	os.execute("mkdir PastRuns\\Run" .. CURRENTRUN)
 	os.execute("move AIData\\* PastRuns\\Run" .. CURRENTRUN)
@@ -1247,20 +1248,29 @@ function initializeEverything()
 	createNewCSV("AIData\\FinalStats.csv",
 	"TimeStamp,Generations,Species,Genome,Fitness,Game Mode ID,Current Level Index,Horizontal Screen,"
 	.. "Vertical Screen,X Position,Y Position,Score Change,Died\n");
-	if pool == nil then	initializePool() end	
+	
+	console.writeline("Created New CSV - Pool Initializing")
+	
+	initializePool()	
+	
+	console.writeline("Writing First Network File")
+	
 	writeNeuralNetworkFile("AIData\\Gen0\\backup.pool")
 	buildForm()
 	initializeBaseVariables()
+	console.writeline("Base Variables initialized")
 end
 
 while true do
-	if pool == nil then initializeEverything() end
-	if pool.generation < GENERATIONSPERTEST then 
+console.writeline("Initializing")
+	initializeEverything()
+	while pool.generation < GENERATIONSPERTEST do
+		
 		local species = pool.species[pool.currentSpecies]
 		local genome = species.genomes[pool.currentGenome]
 		
 		if pool.currentFrame % 4 == 0 then --can't merge this, other functions call evalCurrent()
-			evaluateCurrent()
+			evaluateCurrent(true) else evaluateCurrent(false) 
 		--appendToCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv",
 		--	"" .. pool.currentFrame .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrent .. "," .. 
 		--	marioX .. "," .. marioY .. "," .. s8(WRAM.x_speed) .. "," .. s8(WRAM.y_speed) .. "," .. u8(WRAM.powerup) .. "," .. mario_lives .. "\n")
@@ -1273,6 +1283,7 @@ while true do
 
 		lastRoomID = CurrentRoomID
 		getPositions()
+		
 		if marioX == lastMarioX and lastScore == marioScore and lastMarioY == marioY and game_mode ~= SMW.game_mode_overworld then
 			if pool.currentFrame % 3 == 0 then timeout = timeout - 3 end --the timeout evaluates so fast mario doesn't change positions
 			else if hScreenCurrent ~= lasthScreenCurrent or CurrentRoomID ~= lastRoomID or lastvScreenCurrent ~= vScreenCurrent then
@@ -1295,9 +1306,7 @@ while true do
 			end
 		end
 
-		if level_exit_byte ~= 128 then
-			timeoutBonus = math.floor(pool.currentFrame * .08)
-		end 
+		if level_exit_byte ~= 128 then timeoutBonus = math.floor(pool.currentFrame * .08) end 
 		
 		if marioX > rightmost then rightmost = marioX end
 		if marioY < topmost then topmost = marioY end
@@ -1316,33 +1325,30 @@ while true do
 			timeout = TIMEOUTCONST
 			if level_exit_byte == 0xE0 then	fitnessBonus = fitnessBonus * 1.2
 			else if level_exit_byte == 0x01 or level_exit_byte == 0x02 then fitnessBonus = fitnessBonus * 2 
-			else if level_exit_byte == 128 then fitnessBonus = 0 timeout = 0 timeoutBonus = 0 
-																								end
-													end
-										end
+			else if level_exit_byte == 128 then fitnessBonus = 0 timeout = 0 timeoutBonus = 0 end end end
 			timeoutBonus = -1 
 		end
 		
-		if timeout + timeoutBonus <= 0 then
-			local fitness = rightmost + fitnessBonus + timeoutBonus + math.floor((bestScore * .10) + (rightmost / pool.currentFrame))
-			
+		if timeout + timeoutBonus <= 0 then fitness = rightmost + fitnessBonus + timeoutBonus + math.floor((bestScore * .10) + (rightmost / pool.currentFrame))
 			if fitness > pool.maxFitness then pool.maxFitness = fitness
 				forms.settext(maxFitnessLabel, "Max Fitness: " .. math.floor(pool.maxFitness))
 			end
 			
 			genome.fitness = fitness
+			genome.FinalStats.X = marioX
+			genome.FinalStats.Y = marioY
+			genome.FinalStats.Score = marioScore
+			genome.FinalStats.died = died
+			
 			appendToCSV("AIData\\FinalStats.csv", "" .. os.time() .. "," .. pool.generation .. "," .. pool.currentSpecies .. "," .. pool.currentGenome .. "," .. 
 			fitness .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrCount .. "," .. 
 			marioX .. "," .. marioY .. "," .. marioScore - baseScore .. "," .. tostring(died) .. "\n")
 			
-			
 			pool.currentSpecies = 1
 			pool.currentGenome = 1
 			
-			
 			while fitnessAlreadyMeasured() do nextGenome() end
 			initializeRun()
-
 		end
 			
 		if forms.ischecked(hideBanner) then
@@ -1353,8 +1359,8 @@ while true do
 		end
 		pool.currentFrame = math.floor(pool.currentFrame) + 1
 		emu.frameadvance();
-	else
+		end
 		pool = nil
 		collectgarbage()
 	end
-end
+
