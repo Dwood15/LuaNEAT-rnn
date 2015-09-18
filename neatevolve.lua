@@ -76,7 +76,7 @@ function initializeConstants()
 		BOXRADIUS = 6
 		INPUTSIZE = 4917 --(BOXRADIUS*2+1)*(BOXRADIUS*2+1) --13 * 13 = 169
 		
-		Inputs = INPUTSIZE + 1 --INPUTSIZE + 1 --increment the 2nd value if you wish to add more
+		Inputs = INPUTSIZE
 								-- if you wish to add more. 
 								-- lua is one-indexed unless you tell it otherwise.
 		Outputs = #ButtonNames
@@ -100,6 +100,7 @@ function initializeConstants()
 		DISABLEMUTATIONCHANCE = .40
 		ENABLEMUTATIONCHANCE = .60
 		TIMEOUTCONST = 900
+		STANDSTILLPENALTY = .60
 		RANDOMCULLCHANCE = .01 --TODO: this and extinction
 		MAXNODES = 125000
 end
@@ -501,7 +502,7 @@ function generateNetwork(genome)
 end
 
 function evaluateNetwork(network, inputs)
-	table.insert(inputs, 1)
+	--table.insert(inputs, 1)
 	if #inputs ~= Inputs then
 		console.writeline("Incorrect # of inputs, we have: " .. #inputs .." Expected: " .. Inputs)
 		return {}
@@ -533,7 +534,7 @@ function evaluateNetwork(network, inputs)
 		end
 	end
        
-    return outputs, network
+    return outputs
 end
 
 function crossover(g1, g2)
@@ -966,8 +967,8 @@ function newGeneration()
 	end
 	
 	pool.generation = pool.generation + 1
-	os.execute("mkdir AIData\\Gen" .. pool.generation)
-	writeNeuralNetworkFile("AIData\\Gen" .. pool.generation .. "\\backup." .. forms.gettext(saveLoadFile))
+	--os.execute("mkdir AIData\\Gen" .. pool.generation)
+	writeNeuralNetworkFile("AIData\\Gen" .. pool.generation .. "backup." .. forms.gettext(saveLoadFile))
 end
 	
 function initializePool()
@@ -994,7 +995,7 @@ function evaluateCurrent(updateInputs)
 	local genome = species.genomes[pool.currentGenome]
 
 	if updateInputs then inputs = getInputs() end
-	controller, pool.species[pool.currentSpecies].genomes[pool.currentGenome] = evaluateNetwork(genome.network, inputs)
+	controller = evaluateNetwork(genome.network, inputs)
 	
 	if controller["P1 Left"] and controller["P1 Right"] then
 		controller["P1 Left"] = false
@@ -1014,7 +1015,7 @@ function nextGenome()
 		pool.currentGenome = 1
 		pool.currentSpecies = pool.currentSpecies+1
 		if pool.currentSpecies > #pool.species then
-			writeNeuralNetworkFile("AIData\\Gen" .. pool.generation .. "\\backup" .. pool.generation .. "." .. forms.gettext(saveLoadFile))
+			writeNeuralNetworkFile("AIData\\Gen" .. pool.generation .. "backup" .. pool.generation .. "." .. forms.gettext(saveLoadFile))
 			newGeneration()
 			pool.currentSpecies = 1
 		end
@@ -1195,6 +1196,7 @@ function initializeBaseVariables()
 	marioX, marioY, marioScore, ai_failed_flag, level_exit_byte, mario_lives = getPlayerStats() 
 	last_level_exit_byte = level_exit_byte
 	died = false
+	framesStandingStill = 0
 	originLevelIndex = u8(0x13bf)
 	baseScore = marioScore
 	lastScore = baseScore
@@ -1232,49 +1234,47 @@ function initializeRun()
 	fitnessBonus = 0
 	initializeBaseVariables()
 	emu.limitframerate(false)
-	createNewCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv",
-	"Frame,Game Mode ID,Level Idx,H Scrn,V Scrn,X Pos,Y Pos,X Speed,Y Speed,Powerup ID, Lives\n")
+	--createNewCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv", "Frame,Game Mode ID,Level Idx,H Scrn,V Scrn,X Pos,Y Pos,X Speed,Y Speed,Powerup ID, Lives\n")
 	collectgarbage()
 end
 
-function initializeEverything()
+function marioPositionTheSame()
+return 
+end
+
+while true do
 	timeout = TIMEOUTCONST
 	initializeConstants()
-	console.writeline("Constants Initialized - Making directories")
+
 	CURRENTRUN = CURRENTRUN + 1
 	os.execute("mkdir PastRuns\\Run" .. CURRENTRUN)
 	os.execute("move AIData\\* PastRuns\\Run" .. CURRENTRUN)
-	os.execute("mkdir AIData\\Gen0") 
+--	os.execute("mkdir AIData\\Gen0") 
 	createNewCSV("AIData\\FinalStats.csv",
 	"TimeStamp,Generations,Species,Genome,Fitness,Game Mode ID,Current Level Index,Horizontal Screen,"
 	.. "Vertical Screen,X Position,Y Position,Score Change,Died\n");
 	
-	console.writeline("Created New CSV - Pool Initializing")
+	console.writeline("Constants Initialized - Made directories\n Created New CSV - Pool Initializing")
 	
 	initializePool()	
 	
 	console.writeline("Writing First Network File")
 	
-	writeNeuralNetworkFile("AIData\\Gen0\\backup.pool")
+	writeNeuralNetworkFile("AIData\\Gen0backup.pool")
 	buildForm()
 	initializeBaseVariables()
 	console.writeline("Base Variables initialized")
-end
 
-while true do
-console.writeline("Initializing")
-	initializeEverything()
 	while pool.generation < GENERATIONSPERTEST do
 		
 		local species = pool.species[pool.currentSpecies]
 		local genome = species.genomes[pool.currentGenome]
 		
-		if pool.currentFrame % 4 == 0 then --can't merge this, other functions call evalCurrent()
-			evaluateCurrent(true) else evaluateCurrent(false) 
+		--if pool.currentFrame % 4 == 0 then --can't merge this, other functions call evalCurrent()
+		evaluateCurrent(pool.currentFrame % 4 == 0) --else evaluateCurrent(false) 
 		--appendToCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv",
 		--	"" .. pool.currentFrame .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrent .. "," .. 
 		--	marioX .. "," .. marioY .. "," .. s8(WRAM.x_speed) .. "," .. s8(WRAM.y_speed) .. "," .. u8(WRAM.powerup) .. "," .. mario_lives .. "\n")
-		end
 
 		joypad.set(controller)
 		lastMarioX = marioX
@@ -1285,26 +1285,28 @@ console.writeline("Initializing")
 		getPositions()
 		
 		if marioX == lastMarioX and lastScore == marioScore and lastMarioY == marioY and game_mode ~= SMW.game_mode_overworld then
-			if pool.currentFrame % 3 == 0 then timeout = timeout - 3 end --the timeout evaluates so fast mario doesn't change positions
-			else if hScreenCurrent ~= lasthScreenCurrent or CurrentRoomID ~= lastRoomID or lastvScreenCurrent ~= vScreenCurrent then
-				if give_fitBonus and level_exit_byte ~= 128 then
-					fitnessBonus = fitnessBonus + 25
-					timeout = TIMEOUTCONST
-					give_fitBonus = false
-					else timeout = timeout - 2 end
-			else if pool.currentFrame % 4 == 0 then timeout = timeout - 1 
-				else if game_mode == SMW.game_mode_overworld and lastGameMode ~= SMW.game_mode_overworld then
-					fitnessBonus = fitnessBonus + 200
-					timeout = TIMEOUTCONST
-					else if End_Level_Timer ~= 0 and level_exit_byte ~= 128 then
-						fitnessBonus = fitnessBonus + 1000
-						timeout = TIMEOUTCONST
-						else if game_mode == SMW.game_mode_overworld and lastGameMode == SMW.game_mode_overworld then timeout = timeout - 4	end
+			framesStandingStill = framesStandingStill + 1
+			if pool.currentFrame % 3 == 0 then timeout = timeout - math.ceil(STANDSTILLPENALTY * framesStandingStill) end --the timeout evaluates so fast mario doesn't change positions
+			--IF NOT STANDING STILL, and all this other stuff
+		else if (give_fitBonus and level_exit_byte ~= 128) and (hScreenCurrent ~= lasthScreenCurrent or CurrentRoomID ~= lastRoomID or lastvScreenCurrent ~= vScreenCurrent) then 
+			fitnessBonus = fitnessBonus + 25
+			timeout = TIMEOUTCONST
+			give_fitBonus = false
+			-- if we go to the overworld without death
+		else if game_mode == SMW.game_mode_overworld and lastGameMode ~= SMW.game_mode_overworld and not died then
+			fitnessBonus = fitnessBonus + 200
+			timeout = TIMEOUTCONST
+			-- if the level has hit it's end
+		else if End_Level_Timer ~= 0 and level_exit_byte ~= 128 then
+				fitnessBonus = fitnessBonus + 100
+				timeout = TIMEOUTCONST
+		else if game_mode == SMW.game_mode_overworld and lastGameMode == SMW.game_mode_overworld then timeout = timeout - 6	end
 					end
 				end
 			end
-			end
 		end
+		
+		if timeout == TIMEOUTCONST then framesStandingStill = 0 end
 
 		if level_exit_byte ~= 128 then timeoutBonus = math.floor(pool.currentFrame * .08) end 
 		
@@ -1313,20 +1315,15 @@ console.writeline("Initializing")
 		if marioScore > lastScore and marioScore > bestScore then bestScore = marioScore end
 		
 		local anim_trig = u8(WRAM.animation_trigger) -- player animation trigger ram address 0x71 
-
-		if ai_failed_flag ~= 0x0 then 
-			timeout = -1 
-			fitnessBonus = -1000
-			timeoutBonus = -1
-		end
 		
-		if level_exit_byte ~= 0x00 and level_exit_byte ~= 128 then
+		if ai_failed_flag == 0x0 and level_exit_byte ~= 0x00 and level_exit_byte ~= 128 then
 			pool.currentFrame = 0 --reset 
 			timeout = TIMEOUTCONST
 			if level_exit_byte == 0xE0 then	fitnessBonus = fitnessBonus * 1.2
 			else if level_exit_byte == 0x01 or level_exit_byte == 0x02 then fitnessBonus = fitnessBonus * 2 
 			else if level_exit_byte == 128 then fitnessBonus = 0 timeout = 0 timeoutBonus = 0 end end end
 			timeoutBonus = -1 
+			else if ai_failed_flag ~= 0x0 then timeout = -1 fitnessBonus = -1 timeoutBonus = -1 end
 		end
 		
 		if timeout + timeoutBonus <= 0 then fitness = rightmost + fitnessBonus + timeoutBonus + math.floor((bestScore * .10) + (rightmost / pool.currentFrame))
