@@ -81,7 +81,7 @@ function initializeConstants()
 								-- lua is one-indexed unless you tell it otherwise.
 		Outputs = #ButtonNames
 
-		MINPOPULATION = 300
+		MINPOPULATION = 20
 		MINNOGENOMES = 2
 		
 		DELTADISJOINT = 1.70
@@ -826,7 +826,7 @@ function calculateAverageFitness(species)
 		local genome = species.genomes[g]
 		total = total + genome.globalRank
 	end
-	
+	console.writeline("Species avgFitness: " .. total .. "Species genomes: " .. #species.genomes)
 	species.averageFitness = total / #species.genomes
 end
 
@@ -836,17 +836,18 @@ function totalAverageFitness()
 		local species = pool.species[s]
 		total = total + species.averageFitness
 	end
-
-	return total
+	
+	return total 
 end
 
 function removeStaleSpecies() --this is where the novelty f() is important
     local survived = {}
-
+	console.writeline("Removing stale species: " .. #pool.species)
     for s = 1, #pool.species do
         local species = pool.species[s]
-        
+		console.writeline("genome count for species # " .. s .. " is: " .. #species.genomes )
 		local staleness = 0
+		
 		for g = 1, #species.genomes do
 			for gtop = #species.genomes, g do 
 				if gtop ~= g then
@@ -859,11 +860,11 @@ function removeStaleSpecies() --this is where the novelty f() is important
 		end
 		
 		if staleness < (#species.genomes * STALEGENOMERATIO ) then 
-		console.writeline("reset stale species for species: " .. " of gen: " .. pool.generation .. " stalenes: " .. staleness)
-		species.staleness = 0 
-			else if species.genomes[1].fitness > species.topFitness then
-				species.topFitness = species.genomes[1].fitness
-				species.staleness = 0
+		console.writeline("reset stale species for species: " .. s .. " of gen: " .. pool.generation .. " stalenes: " .. staleness)
+		if #species.genomes > 1 then species.staleness = 0  end
+		else if species.genomes[1].fitness > species.topFitness then
+			species.topFitness = species.genomes[1].fitness
+			species.staleness = 0
 			else species.staleness = species.staleness + 1 end
 		end
         if species.staleness < STALESPECIES or species.topFitness >= pool.maxFitness then
@@ -872,6 +873,7 @@ function removeStaleSpecies() --this is where the novelty f() is important
     end
 
     pool.species = survived
+	console.writeline(#pool.species .. " species survived the stale calculations.")
 end
 
 function cullSpecies(cutToOne)
@@ -905,9 +907,13 @@ function removeWeakSpecies()
 	local survived = {}
 
 	local sum = totalAverageFitness()
+	
 	for s = 1,#pool.species do
 		local species = pool.species[s]
-		if math.floor(species.averageFitness / sum * MINPOPULATION) >= 1 then
+		console.writeline("Average Species fitness: " .. species.averageFitness)
+		local result = math.floor(species.averageFitness / sum * MINPOPULATION)
+		console.writeline("avgFitness / sum * Minpop = " .. result )
+		if result >= 1 then
 			table.insert(survived, species)
 		end
 	end
@@ -938,14 +944,16 @@ function newGeneration()
 
 	rankGlobally()
 	removeStaleSpecies()
+	console.writeline("Removed Stale, remaining: " .. #pool.species)
 	cullSpecies(false) -- Cull the bottom half of each species
+	console.writeline("Culled, species remaining: " .. #pool.species)
 	for s = 1, #pool.species do
 		local species = pool.species[s]
 		calculateAverageFitness(species)
 	end
 	
 	removeWeakSpecies()
-	
+	console.writeline("Removed weak, remaining: " .. #pool.species)
 	local sum = totalAverageFitness()
 	local children = {} 
 	for s = 1,#pool.species do
@@ -1330,7 +1338,7 @@ while true do
 			if fitness > pool.maxFitness then pool.maxFitness = fitness
 				forms.settext(maxFitnessLabel, "Max Fitness: " .. math.floor(pool.maxFitness))
 			end
-			
+			console.writeline("Saving fitness: " .. fitness)
 			genome.fitness = fitness
 			genome.FinalStats.X = marioX
 			genome.FinalStats.Y = marioY
