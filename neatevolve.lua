@@ -43,9 +43,8 @@ end
 
 --local current_level = level.new({1, 2, 3}) -- how to declare new level objects
 
-function initializeConstants()
-		Filename = {"DP1.State"} -- This way we can train the program on levels more efficiently.
-		ButtonNames = {
+local	Filename = {"DP1.State"} -- This way we can train the program on levels more efficiently.
+local	ButtonNames = {
 			"A",
 			"B",
 			"X",
@@ -55,63 +54,61 @@ function initializeConstants()
 			"Left",
 			"Right"
 		}
-		fNameIndex = 1
-		
-		STALEXWEIGHT = .50
-		STALEYWEIGHT = .40
-		STALEDEATHWEIGHT = .03
-		STALESCOREWEIGHT = .07
-		
-		STALEGENOMERATIO = 1.5 -- staleness < (#species.genomes * STALEGENOMERATIO)
-		
-		MAXEVALS = 2
-		CURRENTRUN = 3
-		GENERATIONSPERTEST = 100 
-		BEGINDECAYPERCENT = 50 -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
-		GENERATIONALDECAYRATE = .25 -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially
+local	fNameIndex = 1
+
+local	STALEXWEIGHT = .50
+local	STALEYWEIGHT = .40
+local	STALEDEATHWEIGHT = .03
+local	STALESCOREWEIGHT = .07
+local	STALEGENOMERATIO = 1.5 -- staleness < (#species.genomes * STALEGENOMERATIO)
+local	MAXEVALS = 2
+local	CURRENTRUN = 3
+local	GENERATIONSPERTEST = 100 
+local	BEGINDECAYPERCENT = 50 -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
+local	GENERATIONALDECAYRATE = .25 -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially
 		-- (generationspertest = generationspertest - (1 + (decayrate * populationsize))
 		--	if(pool.currentGeneration/generationspertest) >= begindecaypercent 		
 		--NOT IMPLEMENTED YET
-		
-		BOXRADIUS = 6
-		INPUTSIZE = 4917 --(BOXRADIUS*2+1)*(BOXRADIUS*2+1) --13 * 13 = 169
-		
-		Inputs = INPUTSIZE
-								-- if you wish to add more. 
-								-- lua is one-indexed unless you tell it otherwise.
-		Outputs = #ButtonNames
+local	BOXRADIUS = 6
+local	INPUTSIZE = 4917 --(BOXRADIUS*2+1)*(BOXRADIUS*2+1) --13 * 13 = 169
+local	Inputs = INPUTSIZE
+							-- if you wish to add more. 
+							-- lua is one-indexed unless you tell it otherwise.
+local	Outputs = #ButtonNames
+local	MINPOPULATION = 20
+local	MINNOGENOMES = 2
+local	DELTADISJOINT = 1.70
+local	DELTAWEIGHTS = 0.4
+local	DELTATHRESHOLD = 1.50
+local	STALESPECIES = 10
+local	MUTATECONNECTIONSCHANCE = 0.35
+local	PERTURBCHANCE = 0.90
+local	CROSSOVERCHANCE = 0.75
+local	LINKMUTATIONCHANCE = 1.80
+local	NODEMUTATIONCHANCE = 0.65
+local	BIASMUTATIONCHANCE = 0.45
+local	STEPSIZE = 0.23
+local	DISABLEMUTATIONCHANCE = .40
+local	ENABLEMUTATIONCHANCE = .60
+local	TIMEOUTCONST = 900
+local	STANDSTILLPENALTY = .60
+local	RANDOMCULLCHANCE = .01 --TODO: this and extinction
+local	MAXNODES = 125000
+local	tilesSeen = {}
+local	totalSeen = 0
+local	timeout = TIMEOUTCONST
 
-		MINPOPULATION = 20
-		MINNOGENOMES = 2
-		
-		DELTADISJOINT = 1.70
-		DELTAWEIGHTS = 0.4
-		DELTATHRESHOLD = 1.50
-		
-		
-		STALESPECIES = 10
-		MUTATECONNECTIONSCHANCE = 0.35
-		PERTURBCHANCE = 0.90
-		CROSSOVERCHANCE = 0.75
-		LINKMUTATIONCHANCE = 1.80
-		NODEMUTATIONCHANCE = 0.65
-		BIASMUTATIONCHANCE = 0.45
-		STEPSIZE = 0.23
-		DISABLEMUTATIONCHANCE = .40
-		ENABLEMUTATIONCHANCE = .60
-		TIMEOUTCONST = 900
-		STANDSTILLPENALTY = .60
-		RANDOMCULLCHANCE = .01 --TODO: this and extinction
-		MAXNODES = 125000
-end
 		
 function getPositions() --get mario location and score, along with screen values
 	if gameinfo.getromname() == "Super Mario World (USA)" then
 	local last_level_exit_byte = level_exit_byte 
 		marioX, marioY, marioScore, ai_failed_flag, level_exit_byte, mario_lives = getPlayerStats()
+		
 		if level_exit_byte ~= last_level_exit_byte and level_exit_byte == 128 then died = true end
+		
 		local layer1x = s16(0x1A)
-		local layer1y = s16(0x1C)	
+		local layer1y = s16(0x1C)
+		
 		screenX = marioX-layer1x
 		screenY = marioY-layer1y
 		local tmpScrnX = hScreenCurrent
@@ -270,8 +267,17 @@ function getInputs()
 						local ind = { 1, 1, 1, 1, 1, 1, 1, 1 }
 						local extInd = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
                         tile = getTile(dx, dy) --get the point at that position on the screen?
+						if tilesSeen["L" .. Current_Level_Index .. "X" .. x .. "Y" .. y] == nil and marioY+dy < 0x1B0 then
+							tilesSeen["L" .. Current_Level_Index .. "X" .. x .. "Y" .. y] = 1
+							totalSeen = totalSeen + 1;
+							if tile == 1 then
+								totalSeen = totalSeen + 5;
+							end
+							timeout = TimeoutConstant
+						end
+						
                         if tile == 1 and marioY+dy < 0x1B0 then
-                                inputs[#inputs] = 1 --firing neuron
+                            inputs[#inputs] = 1 --firing neuron
                         end
 							
                         --So mario just knows when something is nearby, not what type it is. Based on proximity and level memorization entirely.
@@ -400,11 +406,11 @@ function newGenome()
 	genome.mutationRates.disable = DISABLEMUTATIONCHANCE
 	genome.mutationRates.step = STEPSIZE
 	genome.FinalStats = {}
-	genome.FinalStats.X = nil
-	genome.FinalStats.Y = nil
-	genome.FinalStats.Score = nil
-	genome.FinalStats.Died = nil
-	genome.FinalStats.game_mode = nil
+	genome.FinalStats.X = 0
+	genome.FinalStats.Y = 0
+	genome.FinalStats.Score = 0
+	genome.FinalStats.Died = false
+	genome.FinalStats.game_mode = 0
 	return genome
 end
 
@@ -421,11 +427,11 @@ function copyGenome(genome)
 	genome2.mutationRates.enable = genome.mutationRates.enable
 	genome2.mutationRates.disable = genome.mutationRates.disable
 	genome2.FinalStats = {}
-	genome2.FinalStats.X = nil
-	genome2.FinalStats.Y = nil
-	genome2.FinalStats.Score = nil
-	genome2.FinalStats.Died = nil			
-	genome2.FinalStats.game_mode = nil
+	genome2.FinalStats.X = 0
+	genome2.FinalStats.Y = 0
+	genome2.FinalStats.Score = 0
+	genome2.FinalStats.Died = 0			
+	genome2.FinalStats.game_mode = 0
 	return genome2
 end
 
@@ -1044,7 +1050,6 @@ end
 	if file ~= nil then 
 	file:write(datastring)
 	file:close()
-	file = nil
 	else 
 	console.writeline("Unable to open file: " .. filename)
 	end
@@ -1055,7 +1060,6 @@ function appendToCSV(filename, datastring)
 	if file ~= nil then
 		file:write(datastring)
 		file:close()
-		file = nil
 	else
 	console.writeline("Unable to open file: " .. filename)
 	end
@@ -1094,7 +1098,6 @@ function writeNeuralNetworkFile(filename)
 		end
         end
         file:close()
-		file = nil
 end
 
 function savePool()
@@ -1225,10 +1228,13 @@ function initializeBaseVariables()
 	Current_Level_Index, game_mode, End_Level_Timer, CurrentRoomID = getLevelStats()
 	lastGameMode = game_mode
 	give_fitBonus = false
+	timeoutBonus = 0
 end
 
 function initializeRun()
 	savestate.load(Filename[fNameIndex]);
+	tilesSeen = {}
+	totalSeen = 0
 	clearJoypad()
 	pool.currentFrame = 0
 	--levelIndex = 0x13bf TODO: Find some way to update levelIndex properly
@@ -1242,12 +1248,9 @@ function initializeRun()
 	fitnessBonus = 0
 	initializeBaseVariables()
 	emu.limitframerate(false)
+	timeoutBonus = 0
 	--createNewCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv", "Frame,Game Mode ID,Level Idx,H Scrn,V Scrn,X Pos,Y Pos,X Speed,Y Speed,Powerup ID, Lives\n")
 	collectgarbage()
-end
-
-function marioPositionTheSame()
-return 
 end
 
 while true do
@@ -1316,7 +1319,7 @@ while true do
 		
 		if timeout == TIMEOUTCONST then framesStandingStill = 0 end
 
-		if level_exit_byte ~= 128 then timeoutBonus = math.floor(pool.currentFrame * .08) end 
+		if level_exit_byte ~= 128 then timeoutBonus = math.floor(pool.currentFrame * .08) else timeoutBonus = 0 end 
 		
 		if marioX > rightmost then rightmost = marioX end
 		if marioY < topmost then topmost = marioY end
@@ -1334,7 +1337,10 @@ while true do
 			else if ai_failed_flag ~= 0x0 then timeout = -1 fitnessBonus = -1 timeoutBonus = -1 end
 		end
 		
-		if timeout + timeoutBonus <= 0 then fitness = rightmost + fitnessBonus + timeoutBonus + math.floor((bestScore * .10) + (rightmost / pool.currentFrame))
+		console.writeline(timeout)
+		if timeout + timeoutBonus <= 0 then 
+		
+		fitness = totalSeen + fitnessBonus + timeoutBonus + math.floor((bestScore * .10) + (totalSeen / (pool.currentFrame * .15)))
 			if fitness > pool.maxFitness then pool.maxFitness = fitness
 				forms.settext(maxFitnessLabel, "Max Fitness: " .. math.floor(pool.maxFitness))
 			end
@@ -1343,7 +1349,7 @@ while true do
 			genome.FinalStats.X = marioX
 			genome.FinalStats.Y = marioY
 			genome.FinalStats.Score = marioScore
-			genome.FinalStats.died = died
+			genome.FinalStats.Died = died
 			
 			appendToCSV("AIData\\FinalStats.csv", "" .. os.time() .. "," .. pool.generation .. "," .. pool.currentSpecies .. "," .. pool.currentGenome .. "," .. 
 			fitness .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrCount .. "," .. 
@@ -1365,7 +1371,6 @@ while true do
 		pool.currentFrame = math.floor(pool.currentFrame) + 1
 		emu.frameadvance();
 		end
-		pool = nil
 		collectgarbage()
 	end
 
