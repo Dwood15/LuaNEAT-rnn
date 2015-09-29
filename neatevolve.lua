@@ -102,7 +102,6 @@ function initializeConstants()
 end
 		
 function getPositions() --get mario location and score, along with screen values
-	if gameinfo.getromname() == "Super Mario World (USA)" then
 	local last_level_exit_byte = level_exit_byte 
 		marioX, marioY, marioScore, ai_failed_flag, level_exit_byte, mario_lives = getPlayerStats()
 		
@@ -133,7 +132,6 @@ function getPositions() --get mario location and score, along with screen values
 		end
 		
 		Current_Level_Index, game_mode, End_Level_Timer, CurrentRoomID = getLevelStats()
-	end
 end
 
 function getTile(dx, dy)
@@ -255,19 +253,24 @@ end
 
 function getInputs()
         getPositions()
+		
         sprites = getSprites()
         extended = getExtendedSprites()
        
         local inputs = {}
 		-- 6 * 16 = 96 so we search 96 up, 96 down, 96 left, and 96 to the right. 
-		-- tile is 16 bytes large?
+		-- tile is 16 * 6 bytes
         for dy=-BOXRADIUS*16, BOXRADIUS*16,16 do
 				-- -96 to 96
                 for dx= -BOXRADIUS*16, BOXRADIUS*16,16 do
 				--we start from the bottom left, and seek from there to the right.
                         inputs[#inputs + 1] = 0 --we add the input
+						local x = math.floor((marioX+dx+8)/16)
+						local y = math.floor((marioY+dy)/16)
+						
 						local ind = { 1, 1, 1, 1, 1, 1, 1, 1 }
 						local extInd = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+						
                         tile = getTile(dx, dy) --get the point at that position on the screen?
 						if tilesSeen["L" .. Current_Level_Index .. "X" .. x .. "Y" .. y] == nil and marioY+dy < 0x1B0 then
 							tilesSeen["L" .. Current_Level_Index .. "X" .. x .. "Y" .. y] = 1
@@ -286,7 +289,7 @@ function getInputs()
                         for i = 1, #sprites do
                                 distx = sprites[i]["x"] - (marioX+dx)
                                 disty = sprites[i]["y"] - (marioY+dy)
-                                if math.abs(distx) <= 8 or math.abs(disty) <= 8 then
+                                if math.abs(distx) <= 8 and math.abs(disty) <= 8 then
 									inputs[#inputs] = -1 --the sprite is nearby
 									extInd = directionalGet(distx, disty)				
 									--fire a neuron based on the TYPE of sprite around...
@@ -311,50 +314,16 @@ function getInputs()
 						end
                 end
         end
-		local player_blocked_status = u8(WRAM.player_blocked_status)
-		local blocked_status = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
 		
-		if bit.check(player_blocked_status, 0) then 
-			blocked_status[1] = 1 
-			blocked_status[2] = 1
-		end
+		player_blocked_status = u8(WRAM.player_blocked_status)
+		blocked_status = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
 		
-		if bit.check(player_blocked_status, 1) then 
-			blocked_status[3] = 1 
-			blocked_status[4] = 1
-		end
-		
-		if bit.check(player_blocked_status, 2) then 
-			blocked_status[5] = 1 
-			blocked_status[6] = 1
-		end
-
-		if bit.check(player_blocked_status, 3) then
-			blocked_status[7] = 1 
-			blocked_status[8] = 1
-		end
-		
-		if bit.check(player_blocked_status, 4) then 
-			blocked_status[9] = 1
-			blocked_status[10] = 1 
-		end
-
-		if bit.check(player_blocked_status, 5) then 
-			blocked_status[12] = 1 
-			blocked_status[11] = 1
-		end
-
-		if bit.check(player_blocked_status, 6) then 
-			blocked_status[13] = 1
-			blocked_status[14] = 1 
-		end
-		if bit.check(player_blocked_status, 7) then 
-			blocked_status[15] = 1 
-			blocked_status[16] = 1
-		end
-		
-		for i = 1, #blocked_status do
-			inputs[#inputs + 1] = blocked_status[i]
+		for i = 0, 7, 1 do	
+			if bit.check(player_blocked_status, i) then 
+				inputs[#inputs + 1] = 1
+			else
+				inputs[#inputs + 1] = -1
+			end
 		end
 
         return inputs
