@@ -54,50 +54,52 @@ local	ButtonNames = {
 			"Left",
 			"Right"
 		}
-local	fNameIndex = 1
+		
+function initializeConstants()
+	fNameIndex = 1
 
-local	STALEXWEIGHT = .50
-local	STALEYWEIGHT = .40
-local	STALEDEATHWEIGHT = .03
-local	STALESCOREWEIGHT = .07
-local	STALEGENOMERATIO = 1.5 -- staleness < (#species.genomes * STALEGENOMERATIO)
-local	MAXEVALS = 2
-local	CURRENTRUN = 3
-local	GENERATIONSPERTEST = 100 
-local	BEGINDECAYPERCENT = 50 -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
-local	GENERATIONALDECAYRATE = .25 -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially
-		-- (generationspertest = generationspertest - (1 + (decayrate * populationsize))
-		--	if(pool.currentGeneration/generationspertest) >= begindecaypercent 		
-		--NOT IMPLEMENTED YET
-local	BOXRADIUS = 6
-local	INPUTSIZE = 4917 --(BOXRADIUS*2+1)*(BOXRADIUS*2+1) --13 * 13 = 169
-local	Inputs = INPUTSIZE
-							-- if you wish to add more. 
-							-- lua is one-indexed unless you tell it otherwise.
-local	Outputs = #ButtonNames
-local	MINPOPULATION = 20
-local	MINNOGENOMES = 2
-local	DELTADISJOINT = 1.70
-local	DELTAWEIGHTS = 0.4
-local	DELTATHRESHOLD = 1.50
-local	STALESPECIES = 10
-local	MUTATECONNECTIONSCHANCE = 0.35
-local	PERTURBCHANCE = 0.90
-local	CROSSOVERCHANCE = 0.75
-local	LINKMUTATIONCHANCE = 1.80
-local	NODEMUTATIONCHANCE = 0.65
-local	BIASMUTATIONCHANCE = 0.45
-local	STEPSIZE = 0.23
-local	DISABLEMUTATIONCHANCE = .40
-local	ENABLEMUTATIONCHANCE = .60
-local	TIMEOUTCONST = 900
-local	STANDSTILLPENALTY = .60
-local	RANDOMCULLCHANCE = .01 --TODO: this and extinction
-local	MAXNODES = 125000
-local	tilesSeen = {}
-local	totalSeen = 0
-local	timeout = TIMEOUTCONST
-
+	STALEXWEIGHT = .50
+	STALEYWEIGHT = .40
+	STALEDEATHWEIGHT = .03
+	STALESCOREWEIGHT = .07
+	STALEGENOMERATIO = 1.5 -- staleness < (#species.genomes * STALEGENOMERATIO)
+	MAXEVALS = 2
+	CURRENTRUN = 3
+	GENERATIONSPERTEST = 100 
+	BEGINDECAYPERCENT = 50 -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
+	GENERATIONALDECAYRATE = .25 -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially
+	-- (generationspertest = generationspertest - (1 + (decayrate * populationsize))
+	--	if(pool.currentGeneration/generationspertest) >= begindecaypercent 		
+	--NOT IMPLEMENTED YET
+	BOXRADIUS = 6
+	INPUTSIZE = 4917 --(BOXRADIUS*2+1)*(BOXRADIUS*2+1) --13 * 13 = 169
+	Inputs = INPUTSIZE
+						-- if you wish to add more. 
+						-- lua is one-indexed unless you tell it otherwise.
+	Outputs = #ButtonNames
+	MINPOPULATION = 20
+	MINNOGENOMES = 2
+	DELTADISJOINT = 1.70
+	DELTAWEIGHTS = 0.4
+	DELTATHRESHOLD = 1.50
+	STALESPECIES = 10
+	MUTATECONNECTIONSCHANCE = 0.35
+	PERTURBCHANCE = 0.90
+	CROSSOVERCHANCE = 0.75
+	LINKMUTATIONCHANCE = 1.80
+	NODEMUTATIONCHANCE = 0.65
+	BIASMUTATIONCHANCE = 0.45
+	STEPSIZE = 0.23
+	DISABLEMUTATIONCHANCE = .40
+	ENABLEMUTATIONCHANCE = .60
+	TIMEOUTCONST = 900
+	STANDSTILLPENALTY = .60
+	RANDOMCULLCHANCE = .01 --TODO: this and extinction
+	MAXNODES = 125000
+	tilesSeen = {}
+	totalSeen = 0
+	timeout = TIMEOUTCONST
+end
 		
 function getPositions() --get mario location and score, along with screen values
 	if gameinfo.getromname() == "Super Mario World (USA)" then
@@ -430,7 +432,7 @@ function copyGenome(genome)
 	genome2.FinalStats.X = 0
 	genome2.FinalStats.Y = 0
 	genome2.FinalStats.Score = 0
-	genome2.FinalStats.Died = 0			
+	genome2.FinalStats.Died = false	
 	genome2.FinalStats.game_mode = 0
 	return genome2
 end
@@ -1238,8 +1240,8 @@ function initializeRun()
 	clearJoypad()
 	pool.currentFrame = 0
 	--levelIndex = 0x13bf TODO: Find some way to update levelIndex properly
-	local species = pool.species[pool.currentSpecies]
-	local genome = species.genomes[pool.currentGenome]
+	species = pool.species[pool.currentSpecies]
+	genome = species.genomes[pool.currentGenome]
 	generateNetwork(genome)
 	evaluateCurrent(true)
 	timeout = TIMEOUTCONST
