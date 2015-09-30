@@ -71,7 +71,7 @@ function initializeConstants()
 	BEGINDECAYPERCENT = 50 -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
 	GENERATIONALDECAYRATE = .25 -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially
 	-- (generationspertest = generationspertest - (1 + (decayrate * populationsize))
-	--	if(pool.currentGeneration/generationspertest) >= begindecaypercent 		
+	--	if(pool.currGeneration/generationspertest) >= begindecaypercent 		
 	--NOT IMPLEMENTED YET
 	BOXRADIUS = 6
 	INPUTSIZE = 4909 --(BOXRADIUS*2+1)*(BOXRADIUS*2+1) --13 * 13 = 169
@@ -79,9 +79,10 @@ function initializeConstants()
 						-- if you wish to add more. 
 						-- lua is one-indexed unless you tell it otherwise.
 	Outputs = #ButtonNames
-	MINPOPULATION = 20
+	MINPOPULATION = 100
+	MINDESIREDGENOMES = 3
 	
-	DELTADISJOINT = 1.70
+	DELTADISJOINT = .75
 	DELTAWEIGHTS = 0.4
 	DELTATHRESHOLD = 1.50
 	STALESPECIES = 10
@@ -755,6 +756,7 @@ function disjoint(genes1, genes2)
 	return disjointGenes / n
 end
 
+--The range for gene.weight is [-2, 2]
 function weights(genes1, genes2)
 	local i2 = {}
 	for i = 1,#genes2 do
@@ -768,7 +770,7 @@ function weights(genes1, genes2)
 		local gene = genes1[i]
 		if i2[gene.innovation] ~= nil then
 			local gene2 = i2[gene.innovation]
-			sum = sum + math.abs(gene.weight - gene2.weight)
+			sum = sum + math.abs(gene.weight - gene2.weight) -- The largest value for sum will be 4, the smallest is zero.
 			coincident = coincident + 1
 		end
 	end
@@ -777,8 +779,8 @@ function weights(genes1, genes2)
 end
 	
 function sameSpecies(genome1, genome2)
-	local dd = DELTADISJOINT*disjoint(genome1.genes, genome2.genes)
-	local dw = DELTAWEIGHTS*weights(genome1.genes, genome2.genes) 
+	local dd = DELTADISJOINT*disjoint(genome1.genes, genome2.genes) -- The largest value will be 1, the smallest will be 0. 
+	local dw = DELTAWEIGHTS*weights(genome1.genes, genome2.genes) -- the smallest value is 0, the largest value is 4 * #genes in genome
 	return dd + dw < DELTATHRESHOLD
 end
 
@@ -843,11 +845,13 @@ function removeStaleSpecies() --this is where the novelty f() is important
 		--I need to revisit this statement. I like where it's going, but it needs to be double checked.
 		--if staleness < (#species.genomes * STALEGENOMERATIO ) then 
 			--console.writeline("reset stale species for species: " .. s .. " of gen: " .. pool.generation .. " stalenes: " .. staleness)
-			if species.genomes[1].fitness > species.topFitness then
-				species.topFitness = species.genomes[1].fitness
-				species.staleness = 0
-				else species.staleness = species.staleness + 1 end
-			end
+		if #species.genomes < MINDESIREDGENOMES and pool.generation > 3 then staleness = staleness + 1 end
+		
+		if species.genomes[1].fitness > species.topFitness then
+			species.topFitness = species.genomes[1].fitness
+			species.staleness = 0
+			else species.staleness = species.staleness + 1 end
+		end
 			
         if species.staleness < STALESPECIES or species.topFitness >= pool.maxFitness then
             table.insert(survived, species)
@@ -1290,7 +1294,6 @@ while true do
 			fitnessBonus = fitnessBonus + 25
 			timeout = TIMEOUTCONST
 			give_fitBonus = false
-			console.writeline("No fitness bonus for this cat, but we did reset timeout: " .. timeout)
 			-- if we go to the overworld without death
 		else if game_mode == SMW.game_mode_overworld and lastGameMode ~= SMW.game_mode_overworld and not died then
 			fitnessBonus = fitnessBonus + 200
