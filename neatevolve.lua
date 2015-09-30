@@ -85,7 +85,7 @@ function initializeConstants()
 	
 	DELTADISJOINT = .65
 	DELTAWEIGHTS = 0.4
-	DELTATHRESHOLD = .25
+	DELTATHRESHOLD = 1.0
 	STALESPECIES = 10
 	MUTATECONNECTIONSCHANCE = 0.4
 	PERTURBCHANCE = 0.90
@@ -809,7 +809,7 @@ function calculateAverageFitness(species)
 		local genome = species.genomes[g]
 		total = total + genome.globalRank
 	end
-	console.writeline("Species avgFitness: " .. total .. "Species genomes: " .. #species.genomes)
+	--console.writeline("Species avgFitness: " .. total .. "Species genomes: " .. #species.genomes)
 	species.averageFitness = total / #species.genomes
 end
 
@@ -825,7 +825,7 @@ end
 
 function removeStaleSpecies() --this is where the novelty f() is important
     local survived = {}
-	console.writeline("Removing stale species: " .. #pool.species)
+	console.writeline("Removing stale, there are: " .. #pool.species .. " species")
     for s = 1, #pool.species do
 	
         local species = pool.species[s]
@@ -852,14 +852,15 @@ function removeStaleSpecies() --this is where the novelty f() is important
 			species.topFitness = species.genomes[1].fitness
 			species.staleness = 0
 			else species.staleness = species.staleness + 1 end
-		end
+		
 			
-        if species.staleness < STALESPECIES or species.topFitness >= pool.maxFitness then
+        if species.staleness < STALESPECIES or species.topFitness >= (pool.maxFitness / 2) then
             table.insert(survived, species)
         end
-
+	end
+	
     pool.species = survived
-	console.writeline(#pool.species .. " species survived the stale calculations.")
+	console.writeline(" " .. #pool.species .. " spec survived the stale calculations.")
 end
 
 function cullSpecies(cutToOne)
@@ -901,9 +902,7 @@ function removeWeakSpecies()
 	
 	for s = 1,#pool.species do
 		local species = pool.species[s]
-		console.writeline("Average Species fitness: " .. species.averageFitness)
 		local result = math.floor(species.averageFitness / sum * MINPOPULATION)
-		console.writeline("avgFitness / sum * Minpop = " .. result )
 		if result >= 1 then
 			table.insert(survived, species)
 		end
@@ -1368,7 +1367,4 @@ while true do
 		pool.currentFrame = math.floor(pool.currentFrame) + 1
 		emu.frameadvance();
 		end
-		
-
 	end
-
