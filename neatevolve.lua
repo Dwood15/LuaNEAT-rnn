@@ -56,6 +56,8 @@ local	ButtonNames = {
 		}
 		
 function initializeConstants()
+	collectgarbage("setpause", 250)
+
 	fNameIndex = 1
 
 	STALEXWEIGHT = .50
@@ -72,13 +74,13 @@ function initializeConstants()
 	--	if(pool.currentGeneration/generationspertest) >= begindecaypercent 		
 	--NOT IMPLEMENTED YET
 	BOXRADIUS = 6
-	INPUTSIZE = 4917 --(BOXRADIUS*2+1)*(BOXRADIUS*2+1) --13 * 13 = 169
+	INPUTSIZE = 4909 --(BOXRADIUS*2+1)*(BOXRADIUS*2+1) --13 * 13 = 169
 	Inputs = INPUTSIZE
 						-- if you wish to add more. 
 						-- lua is one-indexed unless you tell it otherwise.
 	Outputs = #ButtonNames
 	MINPOPULATION = 20
-	MINNOGENOMES = 2
+	
 	DELTADISJOINT = 1.70
 	DELTAWEIGHTS = 0.4
 	DELTATHRESHOLD = 1.50
@@ -278,7 +280,7 @@ function getInputs()
 							if tile == 1 then
 								totalSeen = totalSeen + 5;
 							end
-							timeout = TimeoutConstant
+							timeout = TIMEOUTCONST
 						end
 						
                         if tile == 1 and marioY+dy < 0x1B0 then
@@ -390,6 +392,7 @@ function copyGenome(genome)
 	for g=1,#genome.genes do
 		table.insert(genome2.genes, copyGene(genome.genes[g]))
 	end
+	genome2.fitness = 0
 	genome2.maxneuron = genome.maxneuron
 	genome2.mutationRates.connections = genome.mutationRates.connections
 	genome2.mutationRates.link = genome.mutationRates.link
@@ -821,8 +824,13 @@ function removeStaleSpecies() --this is where the novelty f() is important
     local survived = {}
 	console.writeline("Removing stale species: " .. #pool.species)
     for s = 1, #pool.species do
+	
         local species = pool.species[s]
-		console.writeline("genome count for species # " .. s .. " is: " .. #species.genomes )
+		table.sort(species.genomes, function (a,b)
+			return (a.fitness > b.fitness)
+		end)
+		
+		console.writeline("genome count for specie #" .. s .. ": " .. #species.genomes )
 		local staleness = 0
 		
 		for g = 1, #species.genomes do
@@ -836,18 +844,17 @@ function removeStaleSpecies() --this is where the novelty f() is important
 			end
 		end
 		
-		if staleness < (#species.genomes * STALEGENOMERATIO ) then 
-		console.writeline("reset stale species for species: " .. s .. " of gen: " .. pool.generation .. " stalenes: " .. staleness)
-		if #species.genomes > 1 then species.staleness = 0  end
-		else if species.genomes[1].fitness > species.topFitness then
+		--if staleness < (#species.genomes * STALEGENOMERATIO ) then 
+		--console.writeline("reset stale species for species: " .. s .. " of gen: " .. pool.generation .. " stalenes: " .. staleness)
+		if species.genomes[1].fitness > species.topFitness then
 			species.topFitness = species.genomes[1].fitness
 			species.staleness = 0
 			else species.staleness = species.staleness + 1 end
 		end
+		
         if species.staleness < STALESPECIES or species.topFitness >= pool.maxFitness then
             table.insert(survived, species)
         end
-    end
 
     pool.species = survived
 	console.writeline(#pool.species .. " species survived the stale calculations.")
@@ -857,8 +864,13 @@ function cullSpecies(cutToOne)
 	for s = 1, #pool.species do
 		local species = pool.species[s]
 		
-		local remaining = math.random(1, math.ceil(#species.genomes * .50))
-		if remaining <= 0 then remaining = 2 else if remaining >= #species.genomes then remaining = #species.genomes - 1 end end
+--		table.sort(species.genomes, function (a,b)
+--			return (a.fitness > b.fitness)
+--		end)
+		
+		local remaining = math.ceil(math.random(1, math.ceil(#species.genomes * .50)))
+		if remaining <= 0 then remaining = 2 end
+		if remaining > #species.genomes then remaining = #species.genomes end
 		if cutToOne then remaining = 1	end --Some randomness to keep things spicy.
 		while #species.genomes > remaining do table.remove(species.genomes) end
 	end
@@ -942,6 +954,7 @@ function newGeneration()
 	end
 	
 	cullSpecies(true) -- Cull all but the top member of each species
+	console.writeline("The number of species we're about to breed: " .. tostring(#pool.species))
 	while #children + #pool.species < MINPOPULATION do
 		local species = pool.species[math.random(1, (#pool.species))]
 		table.insert(children, breedChild(species))
@@ -992,6 +1005,7 @@ function evaluateCurrent(updateInputs)
 	end
 
 	joypad.set(controller)
+
 end
 
 function nextGenome()
@@ -1037,7 +1051,8 @@ function appendToCSV(filename, datastring)
  end
 
 function writeNeuralNetworkFile(filename)
-        local file = io.open(filename, "w")
+    local file = io.open(filename, "w")
+	if file ~= nill then
 	file:write(pool.generation .. "\n")
 	file:write(pool.maxFitness .. "\n")
 	file:write(#pool.species .. "\n")
@@ -1069,6 +1084,9 @@ function writeNeuralNetworkFile(filename)
 		end
         end
         file:close()
+	else
+		console.writeline("unable to write file: " .. filename)
+	end
 end
 
 function savePool()
@@ -1133,21 +1151,6 @@ function loadPool()
 	loadNeuralNetFile(filename)
 end
 
-function buildForm()
-	event.onexit(onExit)
-	form = forms.newform(260, 280, "Fitness")
-	maxFitnessLabel = forms.label(form, "Max Fitness: " .. math.floor(pool.maxFitness), 5, 8)
-	showNetwork = forms.checkbox(form, "Show Map", 5, 30)
-	showMutationRates = forms.checkbox(form, "Show M-Rates", 5, 52)
-	restartButton = forms.button(form, "Restart", initializePool, 5, 77)
-	saveButton = forms.button(form, "Save", savePool, 5, 102)
-	loadButton = forms.button(form, "Load", loadPool, 80, 102)
-	saveLoadFile = forms.textbox(form, Filename[fNameIndex] .. ".pool", 170, 25, nil, 5, 148)
-	saveLoadLabel = forms.label(form, "Save/Load:", 5, 129)
-	playTopButton = forms.button(form, "Play Top", playTop, 5, 170)
-	hideBanner = forms.checkbox(form, "Hide Banner", 5, 190)
-end
-
 function playTop()
 	local maxfitness = 0
 	local maxs, maxg
@@ -1173,6 +1176,23 @@ end
 function onExit()
 	forms.destroy(form)
 end
+
+function buildForm()
+	event.onexit(onExit)
+	form = forms.newform(260, 280, "Fitness")
+	maxFitnessLabel = forms.label(form, "Max Fitness: " .. math.floor(pool.maxFitness), 5, 8)
+	showNetwork = forms.checkbox(form, "Show Map", 5, 30)
+	showMutationRates = forms.checkbox(form, "Show M-Rates", 5, 52)
+	restartButton = forms.button(form, "Restart", initializePool, 5, 77)
+	saveButton = forms.button(form, "Save", savePool, 5, 102)
+	loadButton = forms.button(form, "Load", loadPool, 80, 102)
+	saveLoadFile = forms.textbox(form, Filename[fNameIndex] .. ".pool", 170, 25, nil, 5, 148)
+	saveLoadLabel = forms.label(form, "Save/Load:", 5, 129)
+	playTopButton = forms.button(form, "Play Top", playTop, 5, 170)
+	hideBanner = forms.checkbox(form, "Hide Banner", 5, 190)
+end
+
+
 
 function initializeBaseVariables()
 	marioX, marioY, marioScore, ai_failed_flag, level_exit_byte, mario_lives = getPlayerStats() 
@@ -1221,11 +1241,12 @@ function initializeRun()
 	emu.limitframerate(false)
 	timeoutBonus = 0
 	--createNewCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv", "Frame,Game Mode ID,Level Idx,H Scrn,V Scrn,X Pos,Y Pos,X Speed,Y Speed,Powerup ID, Lives\n")
-	collectgarbage()
 end
 
+os.execute("mkdir AIData\\")
+
 while true do
-	timeout = TIMEOUTCONST
+	
 	initializeConstants()
 
 	CURRENTRUN = CURRENTRUN + 1
@@ -1254,9 +1275,7 @@ while true do
 		
 		--if pool.currentFrame % 4 == 0 then --can't merge this, other functions call evalCurrent()
 		evaluateCurrent(pool.currentFrame % 4 == 0) --else evaluateCurrent(false) 
-		--appendToCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv",
-		--	"" .. pool.currentFrame .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrent .. "," .. 
-		--	marioX .. "," .. marioY .. "," .. s8(WRAM.x_speed) .. "," .. s8(WRAM.y_speed) .. "," .. u8(WRAM.powerup) .. "," .. mario_lives .. "\n")
+		timeout = timeout - 1
 
 		joypad.set(controller)
 		lastMarioX = marioX
@@ -1268,29 +1287,34 @@ while true do
 		
 		if marioX == lastMarioX and lastScore == marioScore and lastMarioY == marioY and game_mode ~= SMW.game_mode_overworld then
 			framesStandingStill = framesStandingStill + 1
-			if pool.currentFrame % 3 == 0 then timeout = timeout - math.ceil(STANDSTILLPENALTY * framesStandingStill) end --the timeout evaluates so fast mario doesn't change positions
+			if pool.currentFrame % 3 == 0 then 
+			timeout = timeout - math.ceil(STANDSTILLPENALTY * framesStandingStill) 
+			end --the timeout evaluates so fast mario doesn't change positions
 			--IF NOT STANDING STILL, and all this other stuff
 		else if (give_fitBonus and level_exit_byte ~= 128) and (hScreenCurrent ~= lasthScreenCurrent or CurrentRoomID ~= lastRoomID or lastvScreenCurrent ~= vScreenCurrent) then 
 			fitnessBonus = fitnessBonus + 25
 			timeout = TIMEOUTCONST
 			give_fitBonus = false
+			console.writeline("No fitness bonus for this cat, but we did reset timeout: " .. timeout)
 			-- if we go to the overworld without death
 		else if game_mode == SMW.game_mode_overworld and lastGameMode ~= SMW.game_mode_overworld and not died then
 			fitnessBonus = fitnessBonus + 200
 			timeout = TIMEOUTCONST
+			console.write("Resetting fitness bonus with a timeoutconst")
 			-- if the level has hit it's end
 		else if End_Level_Timer ~= 0 and level_exit_byte ~= 128 then
 				fitnessBonus = fitnessBonus + 100
 				timeout = TIMEOUTCONST
+				console.writeline("increasing fitBonus by 100")
 		else if game_mode == SMW.game_mode_overworld and lastGameMode == SMW.game_mode_overworld then timeout = timeout - 6	end
 					end
 				end
 			end
 		end
-		
+		--console.writeline("Timeout test: " .. timeout)
 		if timeout == TIMEOUTCONST then framesStandingStill = 0 end
 
-		if level_exit_byte ~= 128 then timeoutBonus = math.floor(pool.currentFrame * .08) else timeoutBonus = 0 end 
+		if level_exit_byte ~= 128 then timeoutBonus = math.floor(pool.currentFrame * .1) else timeoutBonus = 0 end 
 		
 		if marioX > rightmost then rightmost = marioX end
 		if marioY < topmost then topmost = marioY end
@@ -1303,15 +1327,18 @@ while true do
 			timeout = TIMEOUTCONST
 			if level_exit_byte == 0xE0 then	fitnessBonus = fitnessBonus * 1.2
 			else if level_exit_byte == 0x01 or level_exit_byte == 0x02 then fitnessBonus = fitnessBonus * 2 
-			else if level_exit_byte == 128 then fitnessBonus = 0 timeout = 0 timeoutBonus = 0 end end end
-			timeoutBonus = -1 
-			else if ai_failed_flag ~= 0x0 then timeout = -1 fitnessBonus = -1 timeoutBonus = -1 end
+			else if level_exit_byte == 128 then fitnessBonus = 0 timeout = 0 timeoutBonus = 0 
+			end end end
+			timeoutBonus = 0
+			else if ai_failed_flag ~= 0x0 then timeout = 5 fitnessBonus = 0 timeoutBonus = 0 end
 		end
 		
-		console.writeline(timeout)
+		--console.writeline("timeout: " .. timeout .. " timeoutBonus: " .. timeoutBonus)
 		if timeout + timeoutBonus <= 0 then 
 		
 		fitness = totalSeen + fitnessBonus + timeoutBonus + math.floor((bestScore * .10) + (totalSeen / (pool.currentFrame * .15)))
+		if fitness == nil then console.writeline("Fitness is null for some reason....") end
+		
 			if fitness > pool.maxFitness then pool.maxFitness = fitness
 				forms.settext(maxFitnessLabel, "Max Fitness: " .. math.floor(pool.maxFitness))
 			end
@@ -1342,6 +1369,8 @@ while true do
 		pool.currentFrame = math.floor(pool.currentFrame) + 1
 		emu.frameadvance();
 		end
-		collectgarbage()
+		console.writeline("Collecting Garbage")
+		
+
 	end
 
