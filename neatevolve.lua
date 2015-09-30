@@ -65,9 +65,10 @@ function initializeConstants()
 	STALEDEATHWEIGHT = .03
 	STALESCOREWEIGHT = .07
 	STALEGENOMERATIO = 1.5 -- staleness < (#species.genomes * STALEGENOMERATIO)
+	
 	MAXEVALS = 2
 	CURRENTRUN = 3
-	GENERATIONSPERTEST = 100 
+	GENERATIONSPERTEST = 200 
 	BEGINDECAYPERCENT = 50 -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
 	GENERATIONALDECAYRATE = .25 -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially
 	-- (generationspertest = generationspertest - (1 + (decayrate * populationsize))
@@ -82,14 +83,14 @@ function initializeConstants()
 	MINPOPULATION = 100
 	MINDESIREDGENOMES = 3
 	
-	DELTADISJOINT = .75
+	DELTADISJOINT = .65
 	DELTAWEIGHTS = 0.4
-	DELTATHRESHOLD = 1.50
+	DELTATHRESHOLD = .25
 	STALESPECIES = 10
-	MUTATECONNECTIONSCHANCE = 0.35
+	MUTATECONNECTIONSCHANCE = 0.4
 	PERTURBCHANCE = 0.90
 	CROSSOVERCHANCE = 0.75
-	LINKMUTATIONCHANCE = 1.80
+	LINKMUTATIONCHANCE = 3.0
 	NODEMUTATIONCHANCE = 0.65
 	BIASMUTATIONCHANCE = 0.45
 	STEPSIZE = 0.23
@@ -703,7 +704,7 @@ function mutate(genome)
 		if math.random() < p then
 			linkMutate(genome, false)
 		end
-		p = p - 1
+		p = p - .5
 	end
 
 	p = genome.mutationRates.bias
@@ -711,7 +712,7 @@ function mutate(genome)
 		if math.random() < p then
 			linkMutate(genome, true)
 		end
-		p = p - 1
+		p = p - .5
 	end
 	
 	p = genome.mutationRates.node
@@ -719,7 +720,7 @@ function mutate(genome)
 		if math.random() < p then
 			nodeMutate(genome)
 		end
-		p = p - 1
+		p = p - .5
 	end
 end
 
@@ -1334,13 +1335,13 @@ while true do
 		--console.writeline("timeout: " .. timeout .. " timeoutBonus: " .. timeoutBonus)
 		if timeout + timeoutBonus <= 0 then 
 		
-		fitness = totalSeen + fitnessBonus + timeoutBonus + math.floor((bestScore * .10) + (totalSeen / (pool.currentFrame * .15)))
+		fitness = fitnessBonus + math.floor((bestScore * .10) + (totalSeen / (pool.currentFrame * .06)))
 		if fitness == nil then console.writeline("Fitness is null for some reason....") end
 		
 			if fitness > pool.maxFitness then pool.maxFitness = fitness
 				forms.settext(maxFitnessLabel, "Max Fitness: " .. math.floor(pool.maxFitness))
 			end
-			console.writeline("Saving fitness: " .. fitness)
+
 			genome.fitness = fitness
 			genome.FinalStats.X = marioX
 			genome.FinalStats.Y = marioY
@@ -1367,7 +1368,6 @@ while true do
 		pool.currentFrame = math.floor(pool.currentFrame) + 1
 		emu.frameadvance();
 		end
-		console.writeline("Collecting Garbage")
 		
 
 	end
