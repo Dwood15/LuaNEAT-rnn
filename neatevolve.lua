@@ -392,7 +392,7 @@ function copyGenome(genome)
 	for g=1,#genome.genes do
 		table.insert(genome2.genes, copyGene(genome.genes[g]))
 	end
-	genome2.fitness = 0
+
 	genome2.maxneuron = genome.maxneuron
 	genome2.mutationRates.connections = genome.mutationRates.connections
 	genome2.mutationRates.link = genome.mutationRates.link
@@ -826,9 +826,6 @@ function removeStaleSpecies() --this is where the novelty f() is important
     for s = 1, #pool.species do
 	
         local species = pool.species[s]
-		table.sort(species.genomes, function (a,b)
-			return (a.fitness > b.fitness)
-		end)
 		
 		console.writeline("genome count for specie #" .. s .. ": " .. #species.genomes )
 		local staleness = 0
@@ -843,15 +840,15 @@ function removeStaleSpecies() --this is where the novelty f() is important
 				end
 			end
 		end
-		
+		--I need to revisit this statement. I like where it's going, but it needs to be double checked.
 		--if staleness < (#species.genomes * STALEGENOMERATIO ) then 
-		--console.writeline("reset stale species for species: " .. s .. " of gen: " .. pool.generation .. " stalenes: " .. staleness)
-		if species.genomes[1].fitness > species.topFitness then
-			species.topFitness = species.genomes[1].fitness
-			species.staleness = 0
-			else species.staleness = species.staleness + 1 end
-		end
-		
+			--console.writeline("reset stale species for species: " .. s .. " of gen: " .. pool.generation .. " stalenes: " .. staleness)
+			if species.genomes[1].fitness > species.topFitness then
+				species.topFitness = species.genomes[1].fitness
+				species.staleness = 0
+				else species.staleness = species.staleness + 1 end
+			end
+			
         if species.staleness < STALESPECIES or species.topFitness >= pool.maxFitness then
             table.insert(survived, species)
         end
@@ -928,21 +925,20 @@ function addToSpecies(child)
 end
 
 function newGeneration()
-	--console.writeline("New generation")
+	console.writeline("New generation")
 	for s = 1, #pool.species do table.sort(pool.species[s].genomes, function(a, b) return (a.fitness > b.fitness) end) end 
 
 	rankGlobally()
 	removeStaleSpecies()
-	console.writeline("Removed Stale, remaining: " .. #pool.species)
+
 	cullSpecies(false) -- Cull the bottom half of each species
-	console.writeline("Culled, species remaining: " .. #pool.species)
+
 	for s = 1, #pool.species do
 		local species = pool.species[s]
 		calculateAverageFitness(species)
 	end
 	
 	removeWeakSpecies()
-	console.writeline("Removed weak, remaining: " .. #pool.species)
 	local sum = totalAverageFitness()
 	local children = {} 
 	for s = 1,#pool.species do
@@ -954,7 +950,7 @@ function newGeneration()
 	end
 	
 	cullSpecies(true) -- Cull all but the top member of each species
-	console.writeline("The number of species we're about to breed: " .. tostring(#pool.species))
+	
 	while #children + #pool.species < MINPOPULATION do
 		local species = pool.species[math.random(1, (#pool.species))]
 		table.insert(children, breedChild(species))
@@ -965,7 +961,6 @@ function newGeneration()
 	end
 	
 	pool.generation = pool.generation + 1
-	--os.execute("mkdir AIData\\Gen" .. pool.generation)
 	writeNeuralNetworkFile("AIData\\Gen" .. pool.generation .. "backup." .. forms.gettext(saveLoadFile))
 end
 	
@@ -1257,7 +1252,7 @@ while true do
 	"TimeStamp,Generations,Species,Genome,Fitness,Game Mode ID,Current Level Index,Horizontal Screen,"
 	.. "Vertical Screen,X Position,Y Position,Score Change,Died\n");
 	
-	console.writeline("Constants Initialized - Made directories\n Created New CSV - Pool Initializing")
+	console.writeline("Constants Initialized - Pool Initializing")
 	
 	initializePool()	
 	
