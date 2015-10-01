@@ -65,7 +65,7 @@ function initializeConstants()
 	STALEDEATHWEIGHT = .1
 	STALESCOREWEIGHT = .18
 	
-	STALEGENOMERATIO = 1.5 -- staleness < (#species.genomes * STALEGENOMERATIO)
+	STALEGENOMERATIO = .75 -- staleness < (#species.genomes * STALEGENOMERATIO)
 	
 	MAXEVALS = 2
 	CURRENTRUN = 3
@@ -845,7 +845,7 @@ function removeStaleSpecies() --this is where the novelty f() is important
 			end
 		end
 		--I need to revisit this statement. I like where it's going, but it needs to be double checked.
-		if staleness > (#species.genomes * STALEGENOMERATIO ) then staleness = (staleness / #species.genomes) end
+		if staleness > (#species.genomes * STALEGENOMERATIO ) then staleness = math.ceil(staleness) end
 			--console.writeline("reset stale species for species: " .. s .. " of gen: " .. pool.generation .. " stalenes: " .. staleness)
 		if #species.genomes < MINDESIREDGENOMES and pool.generation > 3 then staleness = staleness + 1 end
 		console.writeline("Staleness: " .. staleness .. " for species: " .. s)
@@ -854,8 +854,8 @@ function removeStaleSpecies() --this is where the novelty f() is important
 			species.staleness = 0
 		else species.staleness = species.staleness + staleness end
 		
-			
-        if species.staleness < STALESPECIES or species.topFitness >= totalAvgFitness then
+		console.writeline("species.staleness: " .. species.staleness)
+        if species.staleness < STALESPECIES then
             table.insert(survived, species)
         end
 	end
@@ -872,7 +872,7 @@ function cullSpecies(cutToOne)
 --			return (a.fitness > b.fitness)
 --		end)
 		
-		local remaining = math.ceil(math.random(1, math.ceil(#species.genomes * .50)))
+		local remaining = math.ceil(math.random(1, #species.genomes))
 		if remaining <= 0 then remaining = 2 end
 		if remaining > #species.genomes then remaining = #species.genomes end
 		if cutToOne then remaining = 1	end --Some randomness to keep things spicy.
@@ -939,7 +939,7 @@ function newGeneration()
 	removeStaleSpecies()
 	
 	cullSpecies(false) -- Cull the bottom half of each species
-
+	
 	for s = 1, #pool.species do
 		local species = pool.species[s]
 		calculateAverageFitness(species)
