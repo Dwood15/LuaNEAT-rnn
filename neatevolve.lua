@@ -56,14 +56,15 @@ local	ButtonNames = {
 		}
 		
 function initializeConstants()
-	collectgarbage("setpause", 250)
+	collectgarbage("setpause", 200)
 
 	fNameIndex = 1
 
-	STALEXWEIGHT = .50
-	STALEYWEIGHT = .40
-	STALEDEATHWEIGHT = .03
-	STALESCOREWEIGHT = .07
+	STALEXWEIGHT = .39 --
+	STALEYWEIGHT = .33
+	STALEDEATHWEIGHT = .1
+	STALESCOREWEIGHT = .18
+	
 	STALEGENOMERATIO = 1.5 -- staleness < (#species.genomes * STALEGENOMERATIO)
 	
 	MAXEVALS = 2
@@ -834,7 +835,7 @@ function removeStaleSpecies() --this is where the novelty f() is important
 		local staleness = 0
 		
 		for g = 1, #species.genomes do
-			for gtop = #species.genomes, g do 
+			for gtop = #species.genomes, 1 do 
 				if gtop ~= g then
 				if species.genomes[g].FinalStats.X == species[gtop].FinalStats.X then staleness = staleness + STALEXWEIGHT end --highest weight
 				if species.genomes[g].FinalStats.Y == species[gtop].FinalStats.Y then staleness = staleness + STALEYWEIGHT end --2nd
@@ -844,17 +845,17 @@ function removeStaleSpecies() --this is where the novelty f() is important
 			end
 		end
 		--I need to revisit this statement. I like where it's going, but it needs to be double checked.
-		--if staleness < (#species.genomes * STALEGENOMERATIO ) then 
+		if staleness > (#species.genomes * STALEGENOMERATIO ) then staleness = (staleness / #species.genomes) end
 			--console.writeline("reset stale species for species: " .. s .. " of gen: " .. pool.generation .. " stalenes: " .. staleness)
 		if #species.genomes < MINDESIREDGENOMES and pool.generation > 3 then staleness = staleness + 1 end
-		
+		console.writeline("Staleness: " .. staleness .. " for species: " .. s)
 		if species.genomes[1].fitness > species.topFitness then
 			species.topFitness = species.genomes[1].fitness
 			species.staleness = 0
-			else species.staleness = species.staleness + 1 end
+		else species.staleness = species.staleness + staleness end
 		
 			
-        if species.staleness < STALESPECIES or species.topFitness >= (pool.maxFitness / 2) then
+        if species.staleness < STALESPECIES or species.topFitness >= totalAvgFitness then
             table.insert(survived, species)
         end
 	end
@@ -898,11 +899,11 @@ end
 function removeWeakSpecies()
 	local survived = {}
 
-	local sum = totalAverageFitness()
+	local totalAvgFitness = totalAverageFitness()
 	
 	for s = 1,#pool.species do
 		local species = pool.species[s]
-		local result = math.floor(species.averageFitness / sum * MINPOPULATION)
+		local result = math.floor(species.averageFitness / totalAvgFitness * MINPOPULATION)
 		if result >= 1 then
 			table.insert(survived, species)
 		end
@@ -933,8 +934,10 @@ function newGeneration()
 	for s = 1, #pool.species do table.sort(pool.species[s].genomes, function(a, b) return (a.fitness > b.fitness) end) end 
 
 	rankGlobally()
+	
+	local totalAvgFitness = totalAverageFitness()
 	removeStaleSpecies()
-
+	
 	cullSpecies(false) -- Cull the bottom half of each species
 
 	for s = 1, #pool.species do
@@ -943,11 +946,11 @@ function newGeneration()
 	end
 	
 	removeWeakSpecies()
-	local sum = totalAverageFitness()
+	totalAvgFitness = totalAverageFitness()
 	local children = {} 
 	for s = 1,#pool.species do
 		local species = pool.species[s]
-		breed = math.floor(species.averageFitness / sum * MINPOPULATION) - 1
+		breed = math.floor(species.averageFitness / totalAvgFitness * MINPOPULATION) - 1
 		for i=1, breed do
 			table.insert(children, breedChild(species))
 		end
