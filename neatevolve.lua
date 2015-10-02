@@ -81,13 +81,13 @@ function initializeConstants()
 						-- if you wish to add more. 
 						-- lua is one-indexed unless you tell it otherwise.
 	Outputs = #ButtonNames
-	MINPOPULATION = 100
-	MINDESIREDGENOMES = 3
+	MINPOPULATION = 400
+	MINDESIREDGENOMES = 2
 	
 	DELTADISJOINT = .65
 	DELTAWEIGHTS = 0.4
 	DELTATHRESHOLD = 1.0
-	STALESPECIES = 10
+	STALESPECIES = 20
 	MUTATECONNECTIONSCHANCE = 0.4
 	PERTURBCHANCE = 0.90
 	CROSSOVERCHANCE = 0.75
@@ -100,7 +100,7 @@ function initializeConstants()
 	TIMEOUTCONST = 900
 	STANDSTILLPENALTY = .60
 	RANDOMCULLCHANCE = .01 --TODO: this and extinction
-	MAXNODES = 125000
+	MAXNODES = 255000
 	tilesSeen = {}
 	totalSeen = 0
 	timeout = TIMEOUTCONST
@@ -840,14 +840,13 @@ function removeStaleSpecies() --this is where the novelty f() is important
 				if species.genomes[g].FinalStats.X == species[gtop].FinalStats.X then staleness = staleness + STALEXWEIGHT end --highest weight
 				if species.genomes[g].FinalStats.Y == species[gtop].FinalStats.Y then staleness = staleness + STALEYWEIGHT end --2nd
 				if species.genomes[g].FinalStats.Score == species[gtop].FinalStats.Score then staleness = staleness + STALESCOREWEIGHT end --3rd
-				if species.genomes[g].FinalStats.Died == species[gtop].FinalStats.Died then staleness = staleness + STALEDEATHWEIGHT end -- 4th
+				if species.genomes[g].FinalStats.Died  and species[gtop].FinalStats.Died then staleness = staleness + STALEDEATHWEIGHT end -- 4th
 				end
 			end
 		end
 		--I need to revisit this statement. I like where it's going, but it needs to be double checked.
 		if staleness > (#species.genomes * STALEGENOMERATIO ) then staleness = math.ceil(staleness) end
 			--console.writeline("reset stale species for species: " .. s .. " of gen: " .. pool.generation .. " stalenes: " .. staleness)
-		if #species.genomes < MINDESIREDGENOMES and pool.generation > 3 then staleness = staleness + 1 end
 		console.writeline("Staleness: " .. staleness .. " for species: " .. s)
 		if species.genomes[1].fitness > species.topFitness then
 			species.topFitness = species.genomes[1].fitness
@@ -931,6 +930,7 @@ end
 
 function newGeneration()
 	console.writeline("New generation")
+	--Sort the genomes by fitness.
 	for s = 1, #pool.species do table.sort(pool.species[s].genomes, function(a, b) return (a.fitness > b.fitness) end) end 
 
 	rankGlobally()
