@@ -56,7 +56,7 @@ local	ButtonNames = {
 		}
 		
 function initializeConstants()
-	collectgarbage("setpause", 200)
+	
 
 	fNameIndex = 1
 
@@ -65,7 +65,7 @@ function initializeConstants()
 	STALEDEATHWEIGHT = .1
 	STALESCOREWEIGHT = .18
 	
-	STALEGENOMERATIO = .75 -- staleness < (#species.genomes * STALEGENOMERATIO)
+	STALEGENOMERATIO = .60 -- staleness < (#species.genomes * STALEGENOMERATIO)
 	
 	MAXEVALS = 2
 	CURRENTRUN = 3
@@ -81,7 +81,7 @@ function initializeConstants()
 						-- if you wish to add more. 
 						-- lua is one-indexed unless you tell it otherwise.
 	Outputs = #ButtonNames
-	MINPOPULATION = 400
+	MINPOPULATION = 300
 	MINDESIREDGENOMES = 2
 	
 	DELTADISJOINT = .65
@@ -179,9 +179,9 @@ function idToBinaryArray(spriteID, inputArray)
 	for i = 1, #powers do
 		if spriteID > powers[i] then
 			spriteID = spriteID - powers[i]
-			inputArray[i] = 1
+			inputArray[i] = -1
 		else
-			inputArray[i] = - 1
+			inputArray[i] = 1
 		end
 	end
 	return inputArray
@@ -190,41 +190,41 @@ end
 --Yes, this code is repetitive. If there is a faster, more efficient way of doing this, please message dwood15 using reddit or tasvideos.com forums.
 
 local function directionalGet(dx, dy)
-	local	extInd = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+	local	extInd = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
 	if distx < 0 then
-		extInd[1] = -1
+		extInd[1] = 1
 		else if	distx == 0 then 
-			extInd[2] = -1
+			extInd[2] = 1
 			else if distx > 0 then
-				extInd[3] = -1
+				extInd[3] = 1
 			end
 		end
 	end
 	if disty < 0 then
-		extInd[4] = -1
+		extInd[4] = 1
 		else if	disty == 0 then 
-			extInd[5] = -1
+			extInd[5] = 1
 				else if disty > 0 then
-					extInd[6] = -1
+					extInd[6] = 1
 				end
 		end
 	end	
 	distx = math.abs(distx)
 	disty = math.abs(disty)
 	if distx < 7 then
-		extInd[7] = -1
+		extInd[7] = 1
 		if distx < 6 then
-			extInd[8] = -1
+			extInd[8] = 1
 			if distx < 5 then
-				extInd[9] = -1
+				extInd[9] = 1
 				if distx < 4 then
-					extInd[10] = -1
+					extInd[10] = 1
 					if distx < 3 then
-						extInd[11] = -1
+						extInd[11] = 1
 						if distx < 2 then
-							extInd[12] = -1
+							extInd[12] = 1
 							if distx < 1 then
-								extInd[13] = -1
+								extInd[13] = 1
 							end
 						end
 					end
@@ -233,19 +233,19 @@ local function directionalGet(dx, dy)
 		end
 	end
 	if disty < 7 then 
-		extInd[14] = -1
+		extInd[14] = 1
 		if disty < 6 then 
-			extInd[15] = -1
+			extInd[15] = 1
 			if disty < 5 then
-				extInd[16] = -1
+				extInd[16] = 1
 				if disty < 4 then
-					extInd[17] = -1
+					extInd[17] = 1
 					if disty < 3 then
-						extInd[18] = -1
+						extInd[18] = 1
 						if disty < 2 then
-							extInd[19] = -1
+							extInd[19] = 1
 							if disty < 1 then
-								extInd[20] = -1
+								extInd[20] = 1
 							end
 						end
 					end
@@ -273,8 +273,8 @@ function getInputs()
 						local x = math.floor((marioX+dx+8)/16)
 						local y = math.floor((marioY+dy)/16)
 						
-						local ind = { 1, 1, 1, 1, 1, 1, 1, 1 }
-						local extInd = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1}
+						local ind = { -1, -1, -1, -1, -1, -1, -1, -1 }
+						local extInd = {-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1}
 						
                         tile = getTile(dx, dy) --get the point at that position on the screen?
 						if tilesSeen["L" .. Current_Level_Index .. "X" .. x .. "Y" .. y] == nil and marioY+dy < 0x1B0 then
@@ -1242,6 +1242,7 @@ function initializeRun()
 	initializeBaseVariables()
 	emu.limitframerate(false)
 	timeoutBonus = 0
+	collectgarbage()
 	--createNewCSV("AIData\\Gen" .. pool.generation .. "\\Spec" .. pool.currentSpecies .. "Genom" .. pool.currentGenome .. ".csv", "Frame,Game Mode ID,Level Idx,H Scrn,V Scrn,X Pos,Y Pos,X Speed,Y Speed,Powerup ID, Lives\n")
 end
 
