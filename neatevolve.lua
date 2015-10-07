@@ -1300,10 +1300,16 @@ while true do
 			give_fitBonus = false
 			-- if we go to the overworld without death
 		else if game_mode == SMW.game_mode_overworld and lastGameMode ~= SMW.game_mode_overworld and not died then
-			fitnessBonus = fitnessBonus + 200
+			fitnessBonus = fitnessBonus + 400
 			timeout = TIMEOUTCONST
-			console.write("Resetting fitness bonus with a timeoutconst")
+			console.writeline("Game mode is overworld, last is level, and didn't die.")
+			lastGameMode = game_mode
 			-- if the level has hit it's end
+		else if lastGameMode == SMW.game_mode_overworld and game_mode ~= SMW.game_mode_overworld then
+			timeout = TIMEOUTCONST * 3
+			fitnessBonus = fitnessBonus + 450
+			lastGameMode = game_mode
+			console.writeline("In a level, when last in overworld")
 		else if End_Level_Timer ~= 0 and level_exit_byte ~= 128 then
 				fitnessBonus = fitnessBonus + 100
 				timeout = TIMEOUTCONST
