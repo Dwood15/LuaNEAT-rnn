@@ -54,57 +54,49 @@ local	ButtonNames = {
 			"Left",
 			"Right"
 		}
-		
+	
 function initializeConstants()
-	
 
-	fNameIndex = 1
+	fNameIndex 					= 1
 
-	STALEXWEIGHT = .39 --
-	STALEYWEIGHT = .33
-	STALEDEATHWEIGHT = .1
-	STALESCOREWEIGHT = .18
+	STALEXWEIGHT 				= .39 --
+	STALEYWEIGHT 				= .33
+	STALEDEATHWEIGHT 			= .1
+	STALESCOREWEIGHT 			= .18
 	
-	STALEGENOMERATIO = .60 -- staleness < (#species.genomes * STALEGENOMERATIO)
+	STALEGENOMERATIO 			= .40 -- staleness < (#species.genomes * STALEGENOMERATIO)
 	
-	MAXEVALS = 2
-	CURRENTRUN = 3
-	GENERATIONSPERTEST = 200 
-	BEGINDECAYPERCENT = 50 -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
-	GENERATIONALDECAYRATE = .25 -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially
-	-- (generationspertest = generationspertest - (1 + (decayrate * populationsize))
-	--	if(pool.currGeneration/generationspertest) >= begindecaypercent 		
-	--NOT IMPLEMENTED YET
-	BOXRADIUS = 6
-	INPUTSIZE = 4909 --(BOXRADIUS*2+1)*(BOXRADIUS*2+1) --13 * 13 = 169
-	Inputs = INPUTSIZE
-						-- if you wish to add more. 
-						-- lua is one-indexed unless you tell it otherwise.
-	Outputs = #ButtonNames
-	MINPOPULATION = 300
-	MINDESIREDGENOMES = 2
+	MAXEVALS 					= 2 -- The number of times which we 
+	CURRENTRUN 					= 0
+	GENERATIONSPERTEST 			= 200 
+	BEGINDECAYPERCENT 			= 50 -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
+	GENERATIONALDECAYRATE 		= .25 -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially
+										-- (generationspertest = generationspertest - (1 + (decayrate * populationsize))
+										--	if(pool.currGeneration/generationspertest) >= begindecaypercent 		
+										--NOT IMPLEMENTED YET
+
+	MINPOPULATION 				= 300
+	MINDESIREDGENOMES 			= 2
 	
-	DELTADISJOINT = .65
-	DELTAWEIGHTS = 0.4
-	DELTATHRESHOLD = 1.0
-	STALESPECIES = 20
-	MUTATECONNECTIONSCHANCE = 0.4
-	PERTURBCHANCE = 0.90
-	CROSSOVERCHANCE = 0.75
-	LINKMUTATIONCHANCE = 3.0
-	NODEMUTATIONCHANCE = 0.65
-	BIASMUTATIONCHANCE = 0.45
-	STEPSIZE = 0.23
-	DISABLEMUTATIONCHANCE = .40
-	ENABLEMUTATIONCHANCE = .60
-	TIMEOUTCONST = 900
-	STANDSTILLPENALTY = .60
-	RANDOMCULLCHANCE = .01 --TODO: this and extinction
-	MAXNODES = 255000
-	tilesSeen = {}
-	totalSeen = 0
-	timeout = TIMEOUTCONST
-end
+	DELTADISJOINT 				= .65
+	DELTAWEIGHTS 				= 0.4
+	DELTATHRESHOLD 				= 1.0
+	STALESPECIES 				= 20
+	MUTATECONNECTIONSCHANCE		= 0.4
+	PERTURBCHANCE 				= 0.90
+	CROSSOVERCHANCE 			= 0.75
+	LINKMUTATIONCHANCE 			= 3.0
+	NODEMUTATIONCHANCE 			= 0.65
+	BIASMUTATIONCHANCE 			= 0.45
+	STEPSIZE 					= 0.23
+	DISABLEMUTATIONCHANCE 		= .40
+	ENABLEMUTATIONCHANCE 		= .60
+	TIMEOUTCONST 				= 900
+	STANDSTILLPENALTY 			= .60
+	RANDOMCULLCHANCE 			= .01 --TODO: this and extinction
+	MAXNODES 					= 255000
+end	
+
 		
 function getPositions() --get mario location and score, along with screen values
 	local last_level_exit_byte = level_exit_byte 
@@ -844,13 +836,14 @@ function removeStaleSpecies() --this is where the novelty f() is important
 				end
 			end
 		end
-		--I need to revisit this statement. I like where it's going, but it needs to be double checked.
+		console.writeline("Staleness: " .. staleness .. " for species: " .. s)
+		
+				--I need to revisit this statement. I like where it's going, but it needs to be double checked.
 		if staleness > (#species.genomes * STALEGENOMERATIO ) then staleness = math.ceil(staleness) end
 			--console.writeline("reset stale species for species: " .. s .. " of gen: " .. pool.generation .. " stalenes: " .. staleness)
-		console.writeline("Staleness: " .. staleness .. " for species: " .. s)
-		if species.genomes[1].fitness > species.topFitness then
+			
+		if species.genomes[1].fitness > pool.maxFitness then
 			species.topFitness = species.genomes[1].fitness
-			species.staleness = 0
 		else species.staleness = species.staleness + staleness end
 		
 		console.writeline("species.staleness: " .. species.staleness)
@@ -1096,6 +1089,7 @@ function savePool()
 	writeNeuralNetworkFile(filename)
 end
 
+
 function loadNeuralNetFile(filename)
     local file = io.open(filename, "r")
 	if file ~= nil then 
@@ -1152,6 +1146,108 @@ function loadPool()
 	local filename = forms.gettext(saveLoadFile)
 	loadNeuralNetFile(filename)
 end
+
+function writeConfigFile()
+	local file = io.open("ai.cfg", "w")
+	if file ~= nil then 
+	file:write(fNameIndex .. "\n")
+	file:write(STALEXWEIGHT .. "\n")
+	file:write(STALEYWEIGHT .. "\n")
+	file:write(STALEDEATHWEIGHT .. "\n")
+	file:write(STALESCOREWEIGHT .. "\n")
+	file:write(STALEGENOMERATIO .. "\n")
+	
+	file:write(MAXEVALS .. "\n")
+	file:write(CURRENTRUN .. "\n")
+	file:write(GENERATIONSPERTEST .. "\n")
+	file:write(BEGINDECAYPERCENT .. "\n")
+	file:write(GENERATIONALDECAYRATE .. "\n")
+	
+	file:write(MINPOPULATION .. "\n")
+	file:write(MINDESIREDGENOMES .. "\n")
+	
+	file:write(DELTADISJOINT .. "\n")
+	file:write(DELTAWEIGHTS .. "\n")
+	file:write(DELTATHRESHOLD .. "\n")
+	file:write(STALESPECIES .. "\n")
+	file:write(MUTATECONNECTIONSCHANCE .. "\n")
+	file:write(PERTURBCHANCE .. "\n")
+	file:write(CROSSOVERCHANCE .. "\n")
+	file:write(LINKMUTATIONCHANCE .. "\n")
+	file:write(NODEMUTATIONCHANCE .. "\n")
+	file:write(BIASMUTATIONCHANCE .. "\n")
+	file:write(STEPSIZE .. "\n")
+	file:write(DISABLEMUTATIONCHANCE .. "\n")
+	file:write(ENABLEMUTATIONCHANCE .. "\n")
+	file:write(TIMEOUTCONST .. "\n")
+	file:write(STANDSTILLPENALTY .. "\n")
+	file:write(RANDOMCULLCHANCE .. "\n")
+	file:write(MAXNODES .. "\n")
+	else 
+	console.writeline("Unable to write config file to dir")
+	end
+end
+		
+		
+function readConfigFile()
+	local file = io.open("ai.cfg", "r")
+	if file ~= nil then
+		fNameIndex = file:read("*number")
+
+		STALEXWEIGHT = file:read("*number") --
+		STALEYWEIGHT = file:read("*number")
+		STALEDEATHWEIGHT = file:read("*number")
+		STALESCOREWEIGHT = file:read("*number")
+		
+		STALEGENOMERATIO = file:read("*number") -- staleness < (#species.genomes * STALEGENOMERATIO)
+		
+		MAXEVALS = file:read("*number")
+		CURRENTRUN = file:read("*number")
+		GENERATIONSPERTEST = file:read("*number")
+		BEGINDECAYPERCENT = file:read("*number") -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
+		GENERATIONALDECAYRATE = file:read("*number") -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially
+		-- (generationspertest = generationspertest - (1 + (decayrate * populationsize))
+		--	if(pool.currGeneration/generationspertest) >= begindecaypercent 		
+		--NOT IMPLEMENTED YET
+
+		MINPOPULATION = file:read("*number")
+		MINDESIREDGENOMES = file:read("*number")
+		
+		DELTADISJOINT = file:read("*number")
+		DELTAWEIGHTS = file:read("*number")
+		DELTATHRESHOLD = file:read("*number")
+		STALESPECIES = file:read("*number")
+		MUTATECONNECTIONSCHANCE = file:read("*number")
+		PERTURBCHANCE = file:read("*number")
+		CROSSOVERCHANCE = file:read("*number")
+		LINKMUTATIONCHANCE = file:read("*number")
+		NODEMUTATIONCHANCE = file:read("*number")
+		BIASMUTATIONCHANCE = file:read("*number")
+		STEPSIZE = file:read("*number")
+		DISABLEMUTATIONCHANCE = file:read("*number")
+		ENABLEMUTATIONCHANCE = file:read("*number")
+		TIMEOUTCONST = file:read("*number")
+		STANDSTILLPENALTY = file:read("*number")
+		RANDOMCULLCHANCE = file:read("*number") --TODO: this and extinction
+		MAXNODES = file:read("*number")
+
+		else 
+		console.writeline("Could not find config file.\nUsing defaults\n") 
+		initializeConstants()
+		writeConfigFile()
+	end
+	
+	BOXRADIUS = 6
+	INPUTSIZE = 4909 --(BOXRADIUS*2+1)*(BOXRADIUS*2+1) --13 * 13 = 169
+	Inputs = INPUTSIZE
+						-- if you wish to add more. 
+						-- lua is one-indexed unless you tell it otherwise.
+	Outputs = #ButtonNames
+	tilesSeen = {}
+	totalSeen = 0
+	timeout = TIMEOUTCONST
+end
+
 
 function playTop()
 	local maxfitness = 0
@@ -1249,9 +1345,14 @@ end
 os.execute("mkdir AIData\\")
 
 while true do
+	if pool ~= nil then 
+		console.writeline("Saving Config File\n")
+		writeConfigFile()
+	else
+		console.writeline("Reading Config File\n")
+		readConfigFile()
+	end
 	
-	initializeConstants()
-
 	CURRENTRUN = CURRENTRUN + 1
 	os.execute("mkdir PastRuns\\Run" .. CURRENTRUN)
 	os.execute("move AIData\\* PastRuns\\Run" .. CURRENTRUN)
@@ -1291,17 +1392,17 @@ while true do
 		if marioX == lastMarioX and lastScore == marioScore and lastMarioY == marioY and game_mode ~= SMW.game_mode_overworld then
 			framesStandingStill = framesStandingStill + 1
 			if pool.currentFrame % 3 == 0 then 
-			timeout = timeout - math.ceil(STANDSTILLPENALTY * framesStandingStill) 
+				timeout = timeout - math.ceil(STANDSTILLPENALTY * framesStandingStill) 
 			end --the timeout evaluates so fast mario doesn't change positions
 			--IF NOT STANDING STILL, and all this other stuff
 		else if (give_fitBonus and level_exit_byte ~= 128) and (hScreenCurrent ~= lasthScreenCurrent or CurrentRoomID ~= lastRoomID or lastvScreenCurrent ~= vScreenCurrent) then 
-			fitnessBonus = fitnessBonus + 25
+			fitnessBonus = fitnessBonus + 40
 			timeout = TIMEOUTCONST
 			give_fitBonus = false
 			-- if we go to the overworld without death
 		else if game_mode == SMW.game_mode_overworld and lastGameMode ~= SMW.game_mode_overworld and not died then
-			fitnessBonus = fitnessBonus + 400
-			timeout = TIMEOUTCONST
+			fitnessBonus = fitnessBonus + 450
+			timeout = TIMEOUTCONST * 2
 			console.writeline("Game mode is overworld, last is level, and didn't die.")
 			lastGameMode = game_mode
 			-- if the level has hit it's end
@@ -1311,10 +1412,10 @@ while true do
 			lastGameMode = game_mode
 			console.writeline("In a level, when last in overworld")
 		else if End_Level_Timer ~= 0 and level_exit_byte ~= 128 then
-				fitnessBonus = fitnessBonus + 100
+				--fitnessBonus = fitnessBonus + 1
 				timeout = TIMEOUTCONST
-				console.writeline("increasing fitBonus by 100")
 		else if game_mode == SMW.game_mode_overworld and lastGameMode == SMW.game_mode_overworld then timeout = timeout - 6	end
+						end
 					end
 				end
 			end
@@ -1333,8 +1434,8 @@ while true do
 		if ai_failed_flag == 0x0 and level_exit_byte ~= 0x00 and level_exit_byte ~= 128 then
 			pool.currentFrame = 0 --reset 
 			timeout = TIMEOUTCONST
-			if level_exit_byte == 0xE0 then	fitnessBonus = fitnessBonus * 1.2
-			else if level_exit_byte == 0x01 or level_exit_byte == 0x02 then fitnessBonus = fitnessBonus * 2 
+			if level_exit_byte == 0xE0 then	fitnessBonus = fitnessBonus * 1.1
+			else if level_exit_byte == 0x01 or level_exit_byte == 0x02 then fitnessBonus = fitnessBonus * 1.2
 			else if level_exit_byte == 128 then fitnessBonus = 0 timeout = 0 timeoutBonus = 0 
 			end end end
 			timeoutBonus = 0
@@ -1352,8 +1453,8 @@ while true do
 			end
 
 			genome.fitness = fitness
-			genome.FinalStats.X = marioX
-			genome.FinalStats.Y = marioY
+			genome.FinalStats.X = math.floor(marioX)
+			genome.FinalStats.Y = math.floor(marioY)
 			genome.FinalStats.Score = marioScore
 			genome.FinalStats.Died = died
 			
