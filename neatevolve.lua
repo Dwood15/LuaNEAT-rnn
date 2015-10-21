@@ -70,9 +70,8 @@ function initializeConstants()
 	CURRENTRUN 					= 0
 	GENERATIONSPERTEST 			= 200 
 	BEGINDECAYPERCENT 			= 50 -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
-	GENERATIONALDECAYRATE 		= .25 -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially
-										-- (generationspertest = generationspertest - (1 + (decayrate * populationsize))
-										--	if(pool.currGeneration/generationspertest) >= begindecaypercent 		
+	GENERATIONALDECAYRATE 		= .25 -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially									
+										--	if(pool.currGeneration/generationspertest) >= begindecaypercent 	 then GENERATIONSPERTEST = GENERATIONSPERTEST - Gen
 										--NOT IMPLEMENTED YET
 
 	MINPOPULATION 				= 300
@@ -96,7 +95,6 @@ function initializeConstants()
 	RANDOMCULLCHANCE 			= .01 --TODO: this and extinction
 	MAXNODES 					= 255000
 end	
-
 		
 function getPositions() --get mario location and score, along with screen values
 	local last_level_exit_byte = level_exit_byte 
@@ -350,7 +348,7 @@ end
 function newSpecies()
 	local species = {}
 	species.topFitness = 0
-	species.staleness = 0
+	species.staleness = 0.001
 	species.genomes = {}
 	species.averageFitness = 0
 	species.distancefromMean = 0
@@ -824,7 +822,7 @@ function removeStaleSpecies() --this is where the novelty f() is important
         local species = pool.species[s]
 		
 		console.writeline("genome count for specie #" .. s .. ": " .. #species.genomes )
-		local staleness = 0
+		local staleness = 0.0
 		
 		for g = 1, #species.genomes do
 			for gtop = #species.genomes, 1 do 
@@ -836,7 +834,7 @@ function removeStaleSpecies() --this is where the novelty f() is important
 				end
 			end
 		end
-		console.writeline("Staleness: " .. staleness .. " for species: " .. s)
+		--console.writeline("Staleness: " .. staleness .. " for species: " .. s)
 		
 				--I need to revisit this statement. I like where it's going, but it needs to be double checked.
 		if staleness > (#species.genomes * STALEGENOMERATIO ) then staleness = math.ceil(staleness) end
@@ -1089,7 +1087,6 @@ function savePool()
 	writeNeuralNetworkFile(filename)
 end
 
-
 function loadNeuralNetFile(filename)
     local file = io.open(filename, "r")
 	if file ~= nil then 
@@ -1187,8 +1184,7 @@ function writeConfigFile()
 	console.writeline("Unable to write config file to dir")
 	end
 end
-		
-		
+				
 function readConfigFile()
 	local file = io.open("ai.cfg", "r")
 	if file ~= nil then
@@ -1354,10 +1350,10 @@ while true do
 	end
 	
 	CURRENTRUN = CURRENTRUN + 1
-	os.execute("mkdir PastRuns\\Run" .. CURRENTRUN)
-	os.execute("move AIData\\* PastRuns\\Run" .. CURRENTRUN)
+--	os.execute("mkdir PastRuns\\Run" .. CURRENTRUN)
+--	os.execute("move AIData\\* PastRuns\\Run" .. CURRENTRUN)
 --	os.execute("mkdir AIData\\Gen0") 
-	createNewCSV("AIData\\FinalStats.csv",
+	createNewCSV("AIData\\FinalStats" .. CURRENTRUN .. ".csv",
 	"TimeStamp,Generations,Species,Genome,Fitness,Game Mode ID,Current Level Index,Horizontal Screen,"
 	.. "Vertical Screen,X Position,Y Position,Score Change,Died\n");
 	
@@ -1458,7 +1454,7 @@ while true do
 			genome.FinalStats.Score = marioScore
 			genome.FinalStats.Died = died
 			
-			appendToCSV("AIData\\FinalStats.csv", "" .. os.time() .. "," .. pool.generation .. "," .. pool.currentSpecies .. "," .. pool.currentGenome .. "," .. 
+			appendToCSV("AIData\\FinalStats" .. CURRENTRUN .. ".csv", "" .. os.time() .. "," .. pool.generation .. "," .. pool.currentSpecies .. "," .. pool.currentGenome .. "," .. 
 			fitness .. "," .. game_mode .. "," .. Current_Level_Index .. "," .. hScreenCurrent .. "," .. vScreenCurrCount .. "," .. 
 			marioX .. "," .. marioY .. "," .. marioScore - baseScore .. "," .. tostring(died) .. "\n")
 			
