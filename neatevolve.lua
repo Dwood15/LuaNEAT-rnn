@@ -68,14 +68,14 @@ function initializeConstants()
 	
 	MAXEVALS 					= 2 -- The number of times which we 
 	CURRENTRUN 					= 0
-	GENERATIONSPERTEST 			= 200 
+	GENERATIONSPERTEST 			= 100 
 	BEGINDECAYPERCENT 			= 50 -- 50% - The percentage of generations we allow without one completing the level before we begin penalizing for not making progress.
 	GENERATIONALDECAYRATE 		= .25 -- decayrate * population = decayrate. The per-generational number which we reduce the number of generations left till a full restart, so essentially									
 										--	if(pool.currGeneration/generationspertest) >= begindecaypercent 	 then GENERATIONSPERTEST = GENERATIONSPERTEST - Gen
 										--NOT IMPLEMENTED YET
 
-	MINPOPULATION 				= 300
-	MINDESIREDGENOMES 			= 2
+	MINPOPULATION 				= 30
+	MINDESIREDGENOMES 			= 2 -- not implemented
 	
 	DELTADISJOINT 				= .65
 	DELTAWEIGHTS 				= 0.4
@@ -822,27 +822,27 @@ function removeStaleSpecies() --this is where the novelty f() is important
         local species = pool.species[s]
 		
 		console.writeline("genome count for specie #" .. s .. ": " .. #species.genomes )
-		local staleness = 0.0
+		local stale = 0.0
 		
 		for g = 1, #species.genomes do
 			for gtop = #species.genomes, 1 do 
 				if gtop ~= g then
-				if species.genomes[g].FinalStats.X == species[gtop].FinalStats.X then staleness = staleness + STALEXWEIGHT end --highest weight
-				if species.genomes[g].FinalStats.Y == species[gtop].FinalStats.Y then staleness = staleness + STALEYWEIGHT end --2nd
-				if species.genomes[g].FinalStats.Score == species[gtop].FinalStats.Score then staleness = staleness + STALESCOREWEIGHT end --3rd
-				if species.genomes[g].FinalStats.Died  and species[gtop].FinalStats.Died then staleness = staleness + STALEDEATHWEIGHT end -- 4th
+				if species.genomes[g].FinalStats.X == species[gtop].FinalStats.X then stale = stale + STALEXWEIGHT end --highest weight
+				if species.genomes[g].FinalStats.Y == species[gtop].FinalStats.Y then stale = stale + STALEYWEIGHT end --2nd
+				if species.genomes[g].FinalStats.Score == species[gtop].FinalStats.Score then stale = stale + STALESCOREWEIGHT end --3rd
+				if species.genomes[g].FinalStats.Died  and species[gtop].FinalStats.Died then stale = stale + STALEDEATHWEIGHT end -- 4th
 				end
 			end
 		end
-		--console.writeline("Staleness: " .. staleness .. " for species: " .. s)
+		console.writeline("Staleness: " .. stale .. " for species: " .. s)
 		
 				--I need to revisit this statement. I like where it's going, but it needs to be double checked.
-		if staleness > (#species.genomes * STALEGENOMERATIO ) then staleness = math.ceil(staleness) end
+		if stale > (#species.genomes * STALEGENOMERATIO ) then stale = math.ceil(stale) end
 			--console.writeline("reset stale species for species: " .. s .. " of gen: " .. pool.generation .. " stalenes: " .. staleness)
 			
 		if species.genomes[1].fitness > pool.maxFitness then
 			species.topFitness = species.genomes[1].fitness
-		else species.staleness = species.staleness + staleness end
+		else species.staleness = species.staleness + stale end
 		
 		console.writeline("species.staleness: " .. species.staleness)
         if species.staleness < STALESPECIES then
@@ -893,7 +893,7 @@ function removeWeakSpecies()
 	
 	for s = 1,#pool.species do
 		local species = pool.species[s]
-		local result = math.floor(species.averageFitness / totalAvgFitness * MINPOPULATION)
+		local result = math.floor(species.averageFitness / (totalAvgFitness * MINPOPULATION))
 		if result >= 1 then
 			table.insert(survived, species)
 		end
@@ -935,19 +935,25 @@ function newGeneration()
 		local species = pool.species[s]
 		calculateAverageFitness(species)
 	end
-	
+	console.write("\nRemoving weak species, there are: " .. #pool.species .. " but ")
 	removeWeakSpecies()
+	console.write(#pool.species .. " survived\n")
 	totalAvgFitness = totalAverageFitness()
 	local children = {} 
+	
 	for s = 1,#pool.species do
 		local species = pool.species[s]
-		breed = math.floor(species.averageFitness / totalAvgFitness * MINPOPULATION) - 1
+		local breed = math.floor(species.averageFitness / totalAvgFitness * MINPOPULATION) - 1
 		for i=1, breed do
 			table.insert(children, breedChild(species))
 		end
 	end
 	
 	cullSpecies(true) -- Cull all but the top member of each species
+	if #pool.species == 0 then 
+		newPool()
+		console.writeline("We killed all species, created new pool")
+	end
 	
 	while #children + #pool.species < MINPOPULATION do
 		local species = pool.species[math.random(1, (#pool.species))]
@@ -1286,8 +1292,6 @@ function buildForm()
 	hideBanner = forms.checkbox(form, "Hide Banner", 5, 190)
 end
 
-
-
 function initializeBaseVariables()
 	marioX, marioY, marioScore, ai_failed_flag, level_exit_byte, mario_lives = getPlayerStats() 
 	last_level_exit_byte = level_exit_byte
@@ -1351,7 +1355,7 @@ while true do
 	
 	CURRENTRUN = CURRENTRUN + 1
 --	os.execute("mkdir PastRuns\\Run" .. CURRENTRUN)
---	os.execute("move AIData\\* PastRuns\\Run" .. CURRENTRUN)
+	os.execute("move AIData\\* PastRuns\\Run" .. CURRENTRUN)
 --	os.execute("mkdir AIData\\Gen0") 
 	createNewCSV("AIData\\FinalStats" .. CURRENTRUN .. ".csv",
 	"TimeStamp,Generations,Species,Genome,Fitness,Game Mode ID,Current Level Index,Horizontal Screen,"
