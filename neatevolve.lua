@@ -82,6 +82,7 @@ function initializeConstants()
 	DELTATHRESHOLD 				= 1.0
 	STALESPECIES 				= 20
 	MUTATECONNECTIONSCHANCE		= 0.4
+	
 	PERTURBCHANCE 				= 0.90
 	CROSSOVERCHANCE 			= 0.75
 	LINKMUTATIONCHANCE 			= 3.0
@@ -364,13 +365,13 @@ function newGenome()
 	genome.maxneuron = 0
 	genome.globalRank = 0
 	genome.mutationRates = {}
-	genome.mutationRates.connections = MUTATECONNECTIONSCHANCE
-	genome.mutationRates.link = LINKMUTATIONCHANCE
-	genome.mutationRates.bias = BIASMUTATIONCHANCE
-	genome.mutationRates.node = NODEMUTATIONCHANCE
-	genome.mutationRates.enable = ENABLEMUTATIONCHANCE
-	genome.mutationRates.disable = DISABLEMUTATIONCHANCE
-	genome.mutationRates.step = STEPSIZE
+	genome.mutationRates.connections =  MUTATECONNECTIONSCHANCE
+	genome.mutationRates.link = 		LINKMUTATIONCHANCE
+	genome.mutationRates.bias = 		BIASMUTATIONCHANCE
+	genome.mutationRates.node = 		NODEMUTATIONCHANCE
+	genome.mutationRates.enable = 		ENABLEMUTATIONCHANCE
+	genome.mutationRates.disable = 		DISABLEMUTATIONCHANCE
+	genome.mutationRates.step = 		STEPSIZE
 	genome.FinalStats = {}
 	genome.FinalStats.X = 0
 	genome.FinalStats.Y = 0
@@ -951,7 +952,7 @@ function newGeneration()
 	
 	cullSpecies(true) -- Cull all but the top member of each species
 	if #pool.species == 0 then 
-		newPool()
+		pool = newPool()
 		console.writeline("We killed all species, created new pool")
 	end
 	
