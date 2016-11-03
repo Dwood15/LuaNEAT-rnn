@@ -7,7 +7,9 @@ Take these scripts and place them in: <bizhawk root dir>\lua\snes\
 Select a starting point and create a save state - name it DP1.state -
   
 SethBling's MarI/O has some issues, and this project is an attempt to remedy that.
+
   Weaknesses in default MarI/O: 
+    
     1. Weak fitness function
       -Rightmost only - can't discriminate between getting bonuses and alternate routes.
       -Decreasing fitness over time, even if an alternate route 
@@ -19,6 +21,7 @@ SethBling's MarI/O has some issues, and this project is an attempt to remedy tha
       -This is an easily parallelizable task
       
   This program looks to solve these problems by introducing some new features
+    
     1. Improving fitness function
       -Basing fitness as a function of their novelty
       -Improve Breeding/Selection methods
