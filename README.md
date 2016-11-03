@@ -4,7 +4,7 @@ This is an implementation of a NEAT Neural Network, designed to play _Super Mari
 
 Take these scripts and place them in: `\lua\snes\` Select a starting point and create a save state, name it `DP1.state` (where should the save state be saved?)
 
-##### SethBling's MarI/O has some issues, and this project is an attempt to remedy that weaknesses:
+#### SethBling's MarI/O has some issues, and this project is an attempt to remedy that weaknesses:
 1. Weak fitness function 
    - Rightmost only - can't discriminate between getting bonuses and alternate routes.
    - Decreasing fitness over time, even if an alternate route.
@@ -15,7 +15,7 @@ Take these scripts and place them in: `\lua\snes\` Select a starting point and c
 4. Slow, takes a long time to evaluate each specific generation and their species
    - This is an easily parallelizable task
 
-##### This program looks to solve these problems by introducing some new features
+#### This program looks to solve these problems by introducing some new features
 1. Improving fitness function 
    - Basing fitness as a function of their novelty
    - Improve Breeding/Selection methods Track each AI's movements to determine its uniqueness in combination with the Neuron layout.
