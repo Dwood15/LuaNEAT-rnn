@@ -894,7 +894,7 @@ function removeWeakSpecies()
 	
 	for s = 1,#pool.species do
 		local species = pool.species[s]
-		local result = math.floor(species.averageFitness / (totalAvgFitness * MINPOPULATION))
+		local result = math.floor((species.averageFitness / totalAvgFitness) * MINPOPULATION)
 		if result >= 1 then
 			table.insert(survived, species)
 		end
